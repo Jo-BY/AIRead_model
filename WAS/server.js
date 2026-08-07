@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const {
   initDatabase,
-  findStudentByIdentity,
+  createOrGetStudentAccount,
   getStudentById,
   createSubmission,
   getDashboard,
@@ -267,19 +267,13 @@ app.post("/api/auth/login", (req, res) => {
     return res.status(400).json({ message: "번호는 1 이상의 숫자로 입력해 주세요." });
   }
 
-  const student = findStudentByIdentity({
+  const student = createOrGetStudentAccount({
     name: String(name).trim(),
     school: String(school).trim(),
     grade: parsedGrade,
     className: normalizeClassName(className),
     studentNumber: parsedNumber
   });
-
-  if (!student) {
-    return res.status(404).json({
-      message: "등록된 학생 정보를 찾을 수 없습니다. 이름/학교/학년/반/번호를 확인해 주세요."
-    });
-  }
 
   return res.json({
     message: "로그인되었습니다.",
