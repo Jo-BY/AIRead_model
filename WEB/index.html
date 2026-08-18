@@ -18,11 +18,12 @@
       <div class="gnb-inner">
         <div class="brand">AIRead</div>
         <nav class="gnb-menu" aria-label="상단 메뉴">
+          <button type="button" class="gnb-btn student-only" data-view="assignment-check">과제 확인</button>
           <button type="button" class="gnb-btn student-only active" data-view="dashboard">내 대시보드</button>
           <button type="button" class="gnb-btn student-only" data-view="timeline">성장 타임라인</button>
           <button type="button" class="gnb-btn student-only" data-view="evaluation">문해력 평가</button>
-          <button type="button" class="gnb-btn student-only" data-view="ai-diagnosis">AI 진단/추천</button>
           <button type="button" class="gnb-btn teacher-only" data-view="teacher-dashboard">전체 학생 히스토리</button>
+          <button type="button" class="gnb-btn teacher-only" data-view="assignment-create">과제 생성</button>
         </nav>
         <div class="gnb-right">
           <span id="loginStatus" class="login-mini"></span>
@@ -37,11 +38,35 @@
         <p>나의 독서 기록을 분석해 성장 흐름을 확인하고, 문해력 향상을 위한 맞춤 루틴을 제안합니다.</p>
       </header>
 
+      <section class="panel view-panel" id="view-assignment-check">
+        <div class="dashboard-header">
+          <h2>과제 확인</h2>
+          <button id="assignmentCheckRefreshButton" class="small-btn" type="button">새로고침</button>
+        </div>
+
+        <div class="assignment-check-layout">
+          <div class="assignment-check-list-panel">
+            <h3>교사가 부여한 과제</h3>
+            <ul id="studentAssignmentList" class="assignment-check-list"></ul>
+          </div>
+          <div class="assignment-check-detail-panel">
+            <h3 id="studentAssignmentDetailTitle">과제 상세</h3>
+            <div id="studentAssignmentDetailContent" class="assignment-detail-content"></div>
+          </div>
+        </div>
+      </section>
+
       <section class="panel view-panel active" id="view-dashboard">
         <div class="dashboard-header">
           <h2>내 대시보드</h2>
           <button id="refreshButton" class="small-btn" type="button">새로고침</button>
         </div>
+
+        <div class="dashboard-chip-row" aria-label="학생 빠른 이동">
+          <button type="button" class="dashboard-chip active" data-quick-view="dashboard">대시보드</button>
+          <button type="button" class="dashboard-chip emphasis" data-quick-view="ai-diagnosis">AI 진단/추천</button>
+        </div>
+
         <div class="stats" id="stats"></div>
         <div class="table-wrap">
           <table>
@@ -164,50 +189,115 @@
         </div>
       </section>
 
+      <section class="panel view-panel" id="view-assignment-create">
+        <div class="dashboard-header">
+          <h2>과제 생성</h2>
+        </div>
+
+        <form id="assignmentForm" class="assignment-form">
+          <div class="grid-2">
+            <label>
+              책 제목
+              <input name="bookTitle" required placeholder="예: 데미안" />
+            </label>
+            <label>
+              저자
+              <input name="bookAuthor" placeholder="예: 헤르만 헤세" />
+            </label>
+            <label class="wide">
+              책의 요약본
+              <textarea name="summary" rows="5" required placeholder="책의 내용을 핵심만 정리해 적어주세요."></textarea>
+            </label>
+            <label class="wide">
+              과제 목표
+              <textarea name="objective" rows="4" required placeholder="학생이 이 과제를 통해 달성해야 할 목표를 적어주세요."></textarea>
+            </label>
+            <label class="wide">
+              제출 기한
+              <input name="deadline" type="date" required />
+            </label>
+          </div>
+          <button type="submit" class="rainbow-btn">과제 저장하기</button>
+        </form>
+
+        <div class="assignment-list-wrap">
+          <h3>생성된 과제 목록</h3>
+          <ul id="assignmentList" class="assignment-list"></ul>
+        </div>
+      </section>
+
       <section class="panel view-panel" id="view-teacher-dashboard">
         <div class="dashboard-header">
           <h2>전체 학생 문해력 평가 히스토리</h2>
           <button id="teacherRefreshButton" class="small-btn" type="button">새로고침</button>
         </div>
-        <div class="teacher-filters">
-          <label>
-            학생명 검색
-            <input id="teacherSearchInput" type="text" placeholder="예: 김하늘" />
-          </label>
-          <label>
-            학년
-            <select id="teacherGradeFilter">
-              <option value="">전체</option>
-              <option value="1">1학년</option>
-              <option value="2">2학년</option>
-              <option value="3">3학년</option>
-              <option value="4">4학년</option>
-              <option value="5">5학년</option>
-              <option value="6">6학년</option>
-            </select>
-          </label>
-          <label>
-            반
-            <select id="teacherClassFilter">
-              <option value="">전체</option>
-            </select>
-          </label>
-          <button id="teacherFilterResetButton" class="small-btn" type="button">필터 초기화</button>
-        </div>
-        <div class="stats" id="teacherStats"></div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>학생</th>
-                <th>학교/학급</th>
-                <th>평가 건수</th>
-                <th>평균 점수</th>
-                <th>최근 제출일</th>
-              </tr>
-            </thead>
-            <tbody id="teacherDashboardBody"></tbody>
-          </table>
+
+        <div class="teacher-split-layout">
+          <div class="teacher-dashboard-box teacher-main-box">
+            <div class="teacher-box-header">
+              <h3>대시보드</h3>
+            </div>
+            <div class="stats" id="teacherStats"></div>
+            <div id="teacherOverviewSummary" class="teacher-overview-grid"></div>
+
+            <div class="teacher-compare-wrap">
+              <h4>학급/학년 비교</h4>
+              <div id="teacherComparisonChart" class="teacher-comparison-chart"></div>
+            </div>
+
+            <div class="teacher-growth-box">
+              <div class="teacher-box-header">
+                <h3>학생별 평가 점수 통계 및 성장 추이</h3>
+              </div>
+              <div id="teacherStudentTrendList" class="teacher-student-trend-list"></div>
+            </div>
+          </div>
+
+          <div class="teacher-dashboard-box teacher-history-box">
+            <div class="teacher-box-header">
+              <h3>히스토리</h3>
+            </div>
+            <div class="teacher-filters">
+              <label>
+                학생명 검색
+                <input id="teacherSearchInput" type="text" placeholder="예: 김하늘" />
+              </label>
+              <label>
+                학년
+                <select id="teacherGradeFilter">
+                  <option value="">전체</option>
+                  <option value="1">1학년</option>
+                  <option value="2">2학년</option>
+                  <option value="3">3학년</option>
+                  <option value="4">4학년</option>
+                  <option value="5">5학년</option>
+                  <option value="6">6학년</option>
+                </select>
+              </label>
+              <label>
+                반
+                <select id="teacherClassFilter">
+                  <option value="">전체</option>
+                </select>
+              </label>
+              <button id="teacherFilterResetButton" class="small-btn" type="button">필터 초기화</button>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>학생</th>
+                    <th>학교/학급</th>
+                    <th>평가 건수</th>
+                    <th>평균 점수</th>
+                    <th>최근 제출일</th>
+                  </tr>
+                </thead>
+                <tbody id="teacherDashboardBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
     </main>

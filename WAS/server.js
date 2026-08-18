@@ -6,6 +6,10 @@ const {
   createOrGetStudentAccount,
   getStudentById,
   createSubmission,
+  createAssignment,
+  getAssignmentById,
+  getAssignments,
+  createAssignmentSubmission,
   getDashboard,
   getStudentReflectionDetail
 } = require("../DB/database");
@@ -439,6 +443,75 @@ app.get("/api/dashboard", (req, res) => {
 
   const dashboard = getDashboard(safeLimit);
   return res.json(dashboard);
+});
+
+app.post("/api/assignments", (req, res) => {
+  const { bookTitle, bookAuthor, summary, objective, deadline } = req.body || {};
+
+  if (!bookTitle || !summary || !objective || !deadline) {
+    return res.status(400).json({ message: "책 제목, 책의 요약본, 과제 목표, 제출 기한을 모두 입력해 주세요." });
+  }
+
+  const assignment = createAssignment({
+    bookTitle: String(bookTitle).trim(),
+    bookAuthor: bookAuthor ? String(bookAuthor).trim() : null,
+    summary: String(summary).trim(),
+    objective: String(objective).trim(),
+    deadline: String(deadline).trim()
+  });
+
+  return res.status(201).json({
+    message: "과제가 저장되었습니다.",
+    assignment
+  });
+});
+
+app.get("/api/assignments", (req, res) => {
+  return res.json({ assignments: getAssignments() });
+});
+
+app.post("/api/assignment-submissions", (req, res) => {
+  const { studentId, assignmentId, answerText } = req.body || {};
+
+  if (!studentId || !assignmentId || !answerText) {
+    return res.status(400).json({ message: "학생 정보, 과제 정보, 작성 내용을 모두 입력해 주세요." });
+  }
+
+  const parsedStudentId = Number(studentId);
+  const parsedAssignmentId = Number(assignmentId);
+
+  if (!Number.isInteger(parsedStudentId) || parsedStudentId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 학생 계정입니다." });
+  }
+
+  if (!Number.isInteger(parsedAssignmentId) || parsedAssignmentId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 과제입니다." });
+  }
+
+  const student = getStudentById(parsedStudentId);
+  if (!student) {
+    return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다." });
+  }
+
+  const assignment = getAssignmentById(parsedAssignmentId);
+  if (!assignment) {
+    return res.status(404).json({ message: "해당 과제를 찾을 수 없습니다." });
+  }
+
+  const trimmedText = String(answerText).trim();
+  if (trimmedText.length < 20) {
+    return res.status(400).json({ message: "과제 작성은 20자 이상 입력해 주세요." });
+  }
+
+  const evaluation = evaluateReflection(trimmedText);
+  const submission = createAssignmentSubmission(parsedStudentId, parsedAssignmentId, trimmedText, evaluation);
+
+  return res.status(201).json({
+    message: "과제가 제출되었고 평가가 저장되었습니다.",
+    assignment,
+    submission,
+    evaluation
+  });
 });
 
 function startServer(port) {

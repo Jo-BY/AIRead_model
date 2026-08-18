@@ -43,6 +43,9 @@ const teacherSearchInput = document.getElementById("teacherSearchInput");
 const teacherGradeFilter = document.getElementById("teacherGradeFilter");
 const teacherClassFilter = document.getElementById("teacherClassFilter");
 const teacherFilterResetButton = document.getElementById("teacherFilterResetButton");
+const teacherOverviewSummaryEl = document.getElementById("teacherOverviewSummary");
+const teacherComparisonChartEl = document.getElementById("teacherComparisonChart");
+const teacherStudentTrendListEl = document.getElementById("teacherStudentTrendList");
 const teacherDetailModalEl = document.getElementById("teacherDetailModal");
 const teacherDetailCardEl = document.getElementById("teacherDetailCard");
 const teacherDetailDragBarEl = document.getElementById("teacherDetailDragBar");
@@ -50,13 +53,22 @@ const teacherResizeHandleEl = document.getElementById("teacherResizeHandle");
 const teacherDetailCloseButton = document.getElementById("teacherDetailCloseButton");
 const teacherDetailTitleEl = document.getElementById("teacherDetailTitle");
 const teacherDetailBodyEl = document.getElementById("teacherDetailBody");
+const assignmentForm = document.getElementById("assignmentForm");
+const assignmentListEl = document.getElementById("assignmentList");
+const assignmentCheckRefreshButton = document.getElementById("assignmentCheckRefreshButton");
+const studentAssignmentListEl = document.getElementById("studentAssignmentList");
+const studentAssignmentDetailTitleEl = document.getElementById("studentAssignmentDetailTitle");
+const studentAssignmentDetailContentEl = document.getElementById("studentAssignmentDetailContent");
 const gnbButtons = Array.from(document.querySelectorAll(".gnb-btn"));
+const dashboardQuickChips = Array.from(document.querySelectorAll(".dashboard-chip"));
 
 const SESSION_STORAGE_KEY = "airead-auth-session";
 let currentSession = null;
 let teacherGroupedRows = [];
 let teacherFilteredRows = [];
 let myDashboardRows = [];
+let studentAssignments = [];
+let selectedAssignmentId = null;
 const teacherModalState = {
   drag: null,
   resize: null,
@@ -180,6 +192,318 @@ function renderLoginStatus() {
   loginStatusEl.textContent = `${currentStudent.school} ${currentStudent.grade}학년 ${currentStudent.className} ${currentStudent.studentNumber}번 ${currentStudent.name}`;
 }
 
+function renderAssignmentList(items) {
+  assignmentListEl.innerHTML = "";
+
+  if (!items || !items.length) {
+    const li = document.createElement("li");
+    li.textContent = "아직 생성된 과제가 없습니다.";
+    assignmentListEl.appendChild(li);
+    return;
+  }
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    const due = item.deadline ? new Date(`${item.deadline}T00:00:00`).toLocaleDateString("ko-KR") : "기한 미지정";
+    li.innerHTML = `
+      <strong>${item.bookTitle || "제목 없음"}${item.bookAuthor ? ` · ${item.bookAuthor}` : ""}</strong>
+      <div><strong>요약:</strong> ${item.summary || ""}</div>
+      <div><strong>목표:</strong> ${item.objective || ""}</div>
+      <small>제출 기한: ${due}</small>
+    `;
+    assignmentListEl.appendChild(li);
+  });
+}
+
+async function loadAssignments() {
+  const data = await fetchJSON("/api/assignments");
+  renderAssignmentList(data.assignments || []);
+}
+
+function renderStudentAssignmentDetail(assignment) {
+  if (!assignment) {
+    studentAssignmentDetailTitleEl.textContent = "과제 상세";
+    studentAssignmentDetailContentEl.innerHTML = "<p>과제를 선택하면 자세한 내용을 볼 수 있어요.</p>";
+    return;
+  }
+
+  const due = assignment.deadline ? new Date(`${assignment.deadline}T00:00:00`).toLocaleDateString("ko-KR") : "기한 미지정";
+  studentAssignmentDetailTitleEl.textContent = assignment.bookTitle || "제목 없는 과제";
+  studentAssignmentDetailContentEl.innerHTML = `
+    <div class="detail-row"><strong>저자:</strong> ${assignment.bookAuthor || "저자 미기재"}</div>
+    <div class="detail-row"><strong>제출 기한:</strong> ${due}</div>
+    <div class="detail-row"><strong>책의 요약본</strong><div class="detail-box">${assignment.summary || "요약본이 아직 없습니다."}</div></div>
+    <div class="detail-row"><strong>과제 목표</strong><div class="detail-box">${assignment.objective || "과제 목표가 아직 없습니다."}</div></div>
+
+    <div class="assignment-actions">
+      <button type="button" id="assignmentWriteToggleButton" class="rainbow-btn small-btn">과제 작성</button>
+    </div>
+
+    <div id="assignmentWritePanel" class="assignment-write-panel" hidden>
+      <div class="assignment-iframe-shell">
+        <textarea id="assignmentWriteTextarea" class="assignment-write-textarea" placeholder="과제 내용을 입력해 주세요. 20자 이상 작성하면 자동으로 문해력 평가가 진행됩니다."></textarea>
+      </div>
+      <div class="assignment-submit-row">
+        <button type="button" id="assignmentSubmitButton" class="rainbow-btn">과제 제출</button>
+      </div>
+    </div>
+  `;
+
+  const writePanelEl = document.getElementById("assignmentWritePanel");
+  const writeToggleButton = document.getElementById("assignmentWriteToggleButton");
+  const textareaEl = document.getElementById("assignmentWriteTextarea");
+  const submitButton = document.getElementById("assignmentSubmitButton");
+
+  writeToggleButton.addEventListener("click", () => {
+    const hidden = writePanelEl.hasAttribute("hidden");
+    writePanelEl.toggleAttribute("hidden", !hidden);
+    if (!writePanelEl.hasAttribute("hidden")) {
+      textareaEl.focus();
+    }
+  });
+
+  submitButton.addEventListener("click", async () => {
+    const currentStudent = getCurrentStudent();
+    const answerText = textareaEl.value.trim();
+
+    if (!currentStudent) {
+      alert("로그인된 학생 정보가 없습니다.");
+      return;
+    }
+
+    if (!answerText) {
+      alert("과제 내용을 입력해 주세요.");
+      return;
+    }
+
+    try {
+      const result = await fetchJSON("/api/assignment-submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: currentStudent.id,
+          assignmentId: assignment.id,
+          answerText
+        })
+      });
+
+      alert(result.message || "과제가 제출되었습니다.");
+      await loadMyDashboard();
+      await loadAssignmentsForStudent();
+      activateView("dashboard");
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+}
+
+async function loadAssignmentsForStudent() {
+  const data = await fetchJSON("/api/assignments");
+  studentAssignments = data.assignments || [];
+
+  if (!studentAssignments.length) {
+    studentAssignmentListEl.innerHTML = "<li>아직 등록된 과제가 없어요.</li>";
+    renderStudentAssignmentDetail(null);
+    return;
+  }
+
+  if (!selectedAssignmentId || !studentAssignments.some((assignment) => Number(assignment.id) === Number(selectedAssignmentId))) {
+    selectedAssignmentId = Number(studentAssignments[0].id);
+  }
+
+  studentAssignmentListEl.innerHTML = "";
+  studentAssignments.forEach((assignment) => {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    const due = assignment.deadline ? new Date(`${assignment.deadline}T00:00:00`).toLocaleDateString("ko-KR") : "기한 미지정";
+    button.type = "button";
+    button.className = "assignment-check-item";
+    if (Number(assignment.id) === Number(selectedAssignmentId)) {
+      button.classList.add("active");
+    }
+    button.innerHTML = `
+      <strong>${assignment.bookTitle || "제목 없음"}</strong>
+      <span>${assignment.bookAuthor || "저자 미기재"} · ${due}</span>
+    `;
+    button.addEventListener("click", () => {
+      selectedAssignmentId = Number(assignment.id);
+      renderStudentAssignmentDetail(assignment);
+      studentAssignmentListEl.querySelectorAll(".assignment-check-item").forEach((item) => item.classList.toggle("active", Number(item.dataset.assignmentId) === Number(assignment.id)));
+    });
+    button.dataset.assignmentId = assignment.id;
+    li.appendChild(button);
+    studentAssignmentListEl.appendChild(li);
+  });
+
+  const selected = studentAssignments.find((assignment) => Number(assignment.id) === Number(selectedAssignmentId));
+  renderStudentAssignmentDetail(selected || studentAssignments[0]);
+}
+
+function renderTeacherComparisonChart() {
+  const gradeGroups = new Map();
+  const classGroups = new Map();
+
+  teacherGroupedRows.forEach((group) => {
+    const gradeKey = `${group.grade}학년`;
+    const gradeScores = gradeGroups.get(gradeKey) || [];
+    gradeScores.push(Number(group.avgScore || 0));
+    gradeGroups.set(gradeKey, gradeScores);
+
+    const classKey = `${group.grade}학년 ${group.class_name}`;
+    const classScores = classGroups.get(classKey) || [];
+    classScores.push(Number(group.avgScore || 0));
+    classGroups.set(classKey, classScores);
+  });
+
+  const comparisonSections = [
+    {
+      title: "학년별 평균",
+      items: [...gradeGroups.entries()]
+        .map(([label, scores]) => ({
+          label,
+          value: scores.reduce((sum, score) => sum + score, 0) / scores.length
+        }))
+        .sort((a, b) => b.value - a.value)
+    },
+    {
+      title: "학급별 평균",
+      items: [...classGroups.entries()]
+        .map(([label, scores]) => ({
+          label,
+          value: scores.reduce((sum, score) => sum + score, 0) / scores.length
+        }))
+        .sort((a, b) => b.value - a.value)
+    }
+  ];
+
+  teacherComparisonChartEl.innerHTML = "";
+  if (!comparisonSections.some((section) => section.items.length)) {
+    teacherComparisonChartEl.innerHTML = "<div class=\"teacher-overview-empty\">비교할 학생 데이터가 없습니다.</div>";
+    return;
+  }
+
+  comparisonSections.forEach((section) => {
+    if (!section.items.length) {
+      return;
+    }
+
+    const maxValue = Math.max(...section.items.map((item) => item.value), 100);
+    const sectionEl = document.createElement("div");
+    sectionEl.className = "teacher-compare-section";
+    sectionEl.innerHTML = `<h5>${section.title}</h5>`;
+
+    section.items.slice(0, 6).forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "teacher-compare-row";
+      row.innerHTML = `
+        <div class="teacher-compare-label">${item.label}</div>
+        <div class="teacher-compare-track">
+          <span class="teacher-compare-fill" style="width:${(item.value / maxValue) * 100}%"></span>
+        </div>
+        <div class="teacher-compare-value">${item.value.toFixed(1)}점</div>
+      `;
+      sectionEl.appendChild(row);
+    });
+
+    teacherComparisonChartEl.appendChild(sectionEl);
+  });
+}
+
+function renderTeacherOverviewSummary() {
+  if (!teacherGroupedRows.length) {
+    teacherOverviewSummaryEl.innerHTML = "<div class=\"teacher-overview-empty\">아직 표시할 학생 데이터가 없습니다.</div>";
+    teacherStudentTrendListEl.innerHTML = "";
+    teacherComparisonChartEl.innerHTML = "<div class=\"teacher-overview-empty\">비교할 학생 데이터가 없습니다.</div>";
+    return;
+  }
+
+  const sortedByAvg = [...teacherGroupedRows].sort((a, b) => Number(b.avgScore || 0) - Number(a.avgScore || 0));
+  const topStudent = sortedByAvg[0];
+  const avgScoreList = teacherGroupedRows.map((group) => Number(group.avgScore || 0));
+  const overallAverage = avgScoreList.length ? averageValues(avgScoreList).toFixed(1) : "0.0";
+  const improvementCount = teacherGroupedRows.filter((group) => {
+    const items = [...group.items].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
+    if (items.length < 2) {
+      return false;
+    }
+    const first = Number(items[0].total_score || 0);
+    const last = Number(items[items.length - 1].total_score || 0);
+    return last > first;
+  }).length;
+
+  teacherOverviewSummaryEl.innerHTML = `
+    <div class="teacher-overview-card">
+      <span class="teacher-overview-label">전체 평균 점수</span>
+      <strong>${overallAverage}점</strong>
+    </div>
+    <div class="teacher-overview-card">
+      <span class="teacher-overview-label">상위 학생</span>
+      <strong>${topStudent ? `${topStudent.name} ${topStudent.avgScore}점` : "-"}</strong>
+    </div>
+    <div class="teacher-overview-card">
+      <span class="teacher-overview-label">성장 중인 학생</span>
+      <strong>${improvementCount}명</strong>
+    </div>
+    <div class="teacher-overview-card">
+      <span class="teacher-overview-label">총 학생 수</span>
+      <strong>${teacherGroupedRows.length}명</strong>
+    </div>
+  `;
+
+  teacherStudentTrendListEl.innerHTML = "";
+  [...teacherGroupedRows]
+    .sort((a, b) => Number(b.avgScore || 0) - Number(a.avgScore || 0))
+    .slice(0, 6)
+    .forEach((group) => {
+      const items = [...group.items].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
+      const scores = items.map((item) => Number(item.total_score || 0));
+      const first = scores[0] || 0;
+      const last = scores[scores.length - 1] || 0;
+      const delta = last - first;
+      const trendText = delta > 0 ? `+${delta}점 상승` : delta < 0 ? `${delta}점 하락` : "유지";
+      const bars = scores
+        .map((value, index) => {
+          const height = Math.max(12, (value / 100) * 100);
+          return `<span class="student-trend-bar" style="height:${height}%" title="${index + 1}차 점수 ${value}점"></span>`;
+        })
+        .join("");
+
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "teacher-student-trend-item";
+      row.dataset.studentId = String(group.student_id);
+      row.innerHTML = `
+        <div class="teacher-student-trend-head">
+          <div>
+            <strong>${group.name}</strong>
+            <span>${group.school} ${group.grade}학년 ${group.class_name}</span>
+          </div>
+          <div class="teacher-student-trend-score">
+            <span>${group.avgScore}점 평균</span>
+            <em>${trendText}</em>
+          </div>
+        </div>
+        <div class="teacher-student-trend-bars" aria-label="학생 성장 추이">${bars}</div>
+      `;
+      row.addEventListener("click", () => {
+        const selected = teacherGroupedRows.find((item) => Number(item.student_id) === Number(group.student_id));
+        if (selected) {
+          renderTeacherDetail(selected);
+        }
+      });
+      teacherStudentTrendListEl.appendChild(row);
+    });
+
+  renderTeacherComparisonChart();
+}
+
+function averageValues(values) {
+  if (!values.length) {
+    return 0;
+  }
+  return values.reduce((sum, value) => sum + Number(value || 0), 0) / values.length;
+}
+
 function renderTeacherDashboard(data) {
   teacherDashboardBodyEl.innerHTML = "";
   teacherDetailBodyEl.innerHTML = "";
@@ -198,6 +522,8 @@ function renderTeacherDashboard(data) {
   `;
 
   if (!data.rows.length) {
+    teacherOverviewSummaryEl.innerHTML = "<div class=\"teacher-overview-empty\">아직 표시할 학생 데이터가 없습니다.</div>";
+    teacherStudentTrendListEl.innerHTML = "";
     const tr = document.createElement("tr");
     tr.innerHTML = `<td colspan="5">아직 저장된 전체 평가 히스토리가 없어요.</td>`;
     teacherDashboardBodyEl.appendChild(tr);
@@ -247,6 +573,7 @@ function renderTeacherDashboard(data) {
     return Number(a.student_number) - Number(b.student_number);
   });
 
+  renderTeacherOverviewSummary();
   populateTeacherClassFilterOptions();
   applyTeacherFiltersAndRender();
 }
@@ -1013,6 +1340,44 @@ aiDiagnosisRefreshButton.addEventListener("click", async () => {
   }
 });
 teacherRefreshButton.addEventListener("click", loadAllDashboard);
+assignmentCheckRefreshButton.addEventListener("click", async () => {
+  try {
+    await loadAssignmentsForStudent();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+assignmentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (getActiveRole() !== "teacher") {
+    alert("교사 계정에서만 과제를 생성할 수 있어요.");
+    return;
+  }
+
+  const formData = new FormData(assignmentForm);
+  const payload = {
+    bookTitle: formData.get("bookTitle"),
+    bookAuthor: formData.get("bookAuthor"),
+    summary: formData.get("summary"),
+    objective: formData.get("objective"),
+    deadline: formData.get("deadline")
+  };
+
+  try {
+    const result = await fetchJSON("/api/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    assignmentForm.reset();
+    await loadAssignments();
+    alert(result.message || "과제가 저장되었습니다.");
+  } catch (error) {
+    alert(error.message);
+  }
+});
 teacherSearchInput.addEventListener("input", applyTeacherFiltersAndRender);
 teacherGradeFilter.addEventListener("change", () => {
   populateTeacherClassFilterOptions();
@@ -1098,6 +1463,28 @@ gnbButtons.forEach((button) => {
         alert(error.message);
       }
     }
+    if (button.dataset.view === "assignment-check") {
+      try {
+        await loadAssignmentsForStudent();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  });
+});
+
+dashboardQuickChips.forEach((chip) => {
+  chip.addEventListener("click", async () => {
+    const targetView = chip.dataset.quickView;
+    activateView(targetView);
+
+    if (targetView === "ai-diagnosis") {
+      try {
+        await loadAiDiagnosis();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
   });
 });
 
@@ -1112,12 +1499,12 @@ gnbButtons.forEach((button) => {
     renderLoginStatus();
 
     if (getActiveRole() === "teacher") {
-      await loadAllDashboard();
+      await Promise.all([loadAllDashboard(), loadAssignments()]);
       activateView("teacher-dashboard");
       return;
     }
 
-    await Promise.all([loadIndicators(), loadMyDashboard()]);
+    await Promise.all([loadIndicators(), loadMyDashboard(), loadAssignmentsForStudent()]);
     activateView("dashboard");
   } catch (error) {
     alert(`초기 로딩 오류: ${error.message}`);
@@ -1126,6 +1513,10 @@ gnbButtons.forEach((button) => {
 function activateView(viewName) {
   gnbButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.view === viewName);
+  });
+
+  dashboardQuickChips.forEach((chip) => {
+    chip.classList.toggle("active", chip.dataset.quickView === viewName);
   });
 
   document.querySelectorAll(".view-panel").forEach((panel) => {

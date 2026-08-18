@@ -51,6 +51,33 @@ function initDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(reflection_id) REFERENCES book_reflections(id)
     );
+
+    CREATE TABLE IF NOT EXISTS assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_title TEXT NOT NULL,
+      book_author TEXT,
+      summary_text TEXT NOT NULL,
+      objective TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS assignment_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      assignment_id INTEGER NOT NULL,
+      answer_text TEXT NOT NULL,
+      total_score INTEGER NOT NULL,
+      comprehension INTEGER NOT NULL,
+      inference INTEGER NOT NULL,
+      critical_thinking INTEGER NOT NULL,
+      expression INTEGER NOT NULL,
+      vocab_grammar INTEGER NOT NULL,
+      feedback_json TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(student_id) REFERENCES student_accounts(id),
+      FOREIGN KEY(assignment_id) REFERENCES assignments(id)
+    );
   `);
 
   const columns = db.prepare("PRAGMA table_info(student_accounts)").all();
@@ -193,6 +220,148 @@ function createSubmission(studentId, reflection, evaluation) {
     return {
       studentId,
       reflectionId: reflectionResult.lastInsertRowid
+    };
+  });
+
+  return tx();
+}
+
+function createAssignment(assignment) {
+  const result = db
+    .prepare(
+      `
+      INSERT INTO assignments (book_title, book_author, summary_text, objective, due_date)
+      VALUES (?, ?, ?, ?, ?)
+    `
+    )
+    .run(
+      String(assignment.bookTitle || "").trim(),
+      assignment.bookAuthor ? String(assignment.bookAuthor).trim() : null,
+      String(assignment.summary || "").trim(),
+      String(assignment.objective || "").trim(),
+      String(assignment.deadline || "").trim()
+    );
+
+  return {
+    id: Number(result.lastInsertRowid),
+    bookTitle: String(assignment.bookTitle || "").trim(),
+    bookAuthor: assignment.bookAuthor ? String(assignment.bookAuthor).trim() : null,
+    summary: String(assignment.summary || "").trim(),
+    objective: String(assignment.objective || "").trim(),
+    deadline: String(assignment.deadline || "").trim(),
+    createdAt: new Date().toISOString()
+  };
+}
+
+function getAssignments() {
+  return db
+    .prepare(
+      `
+      SELECT id, book_title AS bookTitle, book_author AS bookAuthor, summary_text AS summary,
+             objective, due_date AS deadline, created_at AS createdAt
+      FROM assignments
+      ORDER BY id DESC
+    `
+    )
+    .all();
+}
+
+function getAssignmentById(assignmentId) {
+  return db
+    .prepare(
+      `
+      SELECT id, book_title AS bookTitle, book_author AS bookAuthor, summary_text AS summary,
+             objective, due_date AS deadline, created_at AS createdAt
+      FROM assignments
+      WHERE id = ?
+      LIMIT 1
+    `
+    )
+    .get(assignmentId);
+}
+
+function createAssignmentSubmission(studentId, assignmentId, answerText, evaluation) {
+  const assignment = getAssignmentById(assignmentId);
+  if (!assignment) {
+    throw new Error("해당 과제를 찾을 수 없습니다.");
+  }
+
+  const tx = db.transaction(() => {
+    const reflectionStmt = db.prepare(`
+      INSERT INTO book_reflections (student_id, book_title, book_author, reflection_text)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const reflectionResult = reflectionStmt.run(
+      studentId,
+      assignment.bookTitle,
+      assignment.bookAuthor || null,
+      String(answerText || "").trim()
+    );
+
+    const evaluationStmt = db.prepare(`
+      INSERT INTO literacy_evaluations (
+        reflection_id,
+        total_score,
+        comprehension,
+        inference,
+        critical_thinking,
+        expression,
+        vocab_grammar,
+        feedback_json
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    evaluationStmt.run(
+      reflectionResult.lastInsertRowid,
+      evaluation.totalScore,
+      evaluation.scores.comprehension,
+      evaluation.scores.inference,
+      evaluation.scores.criticalThinking,
+      evaluation.scores.expression,
+      evaluation.scores.vocabGrammar,
+      JSON.stringify(evaluation.feedback)
+    );
+
+    const submissionStmt = db.prepare(`
+      INSERT INTO assignment_submissions (
+        student_id,
+        assignment_id,
+        answer_text,
+        total_score,
+        comprehension,
+        inference,
+        critical_thinking,
+        expression,
+        vocab_grammar,
+        feedback_json
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const submissionResult = submissionStmt.run(
+      studentId,
+      assignmentId,
+      String(answerText || "").trim(),
+      evaluation.totalScore,
+      evaluation.scores.comprehension,
+      evaluation.scores.inference,
+      evaluation.scores.criticalThinking,
+      evaluation.scores.expression,
+      evaluation.scores.vocabGrammar,
+      JSON.stringify(evaluation.feedback)
+    );
+
+    return {
+      id: Number(submissionResult.lastInsertRowid),
+      studentId,
+      assignmentId,
+      reflectionId: Number(reflectionResult.lastInsertRowid),
+      bookTitle: assignment.bookTitle,
+      bookAuthor: assignment.bookAuthor,
+      answerText: String(answerText || "").trim(),
+      evaluation
     };
   });
 
@@ -344,6 +513,10 @@ module.exports = {
   createOrGetStudentAccount,
   getStudentById,
   createSubmission,
+  createAssignment,
+  getAssignmentById,
+  getAssignments,
+  createAssignmentSubmission,
   getDashboard,
   getStudentReflectionDetail
 };
