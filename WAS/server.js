@@ -14,6 +14,7 @@ const { INDICATORS, evaluateReflection } = require("./services/evaluator");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || "0000";
+const HAS_EXPLICIT_PORT = Boolean(process.env.PORT);
 
 const INDICATOR_META = [
   { key: "comprehension", label: "내용 이해" },
@@ -440,10 +441,26 @@ app.get("/api/dashboard", (req, res) => {
   return res.json(dashboard);
 });
 
-app.listen(PORT, () => {
-  console.log(`AIRead server running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  if (process.env.DB_PATH || process.env.DB_DIR) {
-    console.log("Custom DB path configuration is enabled.");
-  }
-});
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`AIRead server running on http://localhost:${port}`);
+    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+    if (process.env.DB_PATH || process.env.DB_DIR) {
+      console.log("Custom DB path configuration is enabled.");
+    }
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE" && !HAS_EXPLICIT_PORT && port < 3010) {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is already in use. Retrying on ${nextPort}...`);
+      startServer(nextPort);
+      return;
+    }
+
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  });
+}
+
+startServer(PORT);
