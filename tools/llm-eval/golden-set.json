@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "title": "LLM 문해력 평가 골든셋 (초안)",
+    "labeledBy": "team-draft",
+    "IMPORTANT_VERIFICATION_NOTE": "이 골든셋의 expectedScores는 루브릭을 기준으로 팀이 임시로 라벨링한 초안입니다. 운영 반영 전 국어 교사의 검수를 받아 verified=true로 갱신하세요.",
+    "scale": "1~5점, evaluator.js/LLM 평가 결과의 scores와 동일한 척도"
+  },
+  "items": [
+    { "id": "g01-low-weak", "grade": 2, "bookTitle": "강아지똥", "bookAuthor": "권정생", "reflectionText": "강아지똥은 더러웠다. 꽃이 폈다.", "expectedScores": { "comprehension": 1, "inference": 1, "criticalThinking": 1, "expression": 1, "vocabGrammar": 2 }, "verified": false },
+    { "id": "g02-low-mid", "grade": 2, "bookTitle": "마당을 나온 암탉", "bookAuthor": "황선미", "reflectionText": "잎싹은 알을 품었다. 아기 청둥오리가 태어났다. 잎싹은 아기를 사랑했다. 나는 이 이야기가 좋았다.", "expectedScores": { "comprehension": 3, "inference": 2, "criticalThinking": 2, "expression": 3, "vocabGrammar": 3 }, "verified": false },
+    { "id": "g03-low-strong", "grade": 2, "bookTitle": "강아지똥", "bookAuthor": "권정생", "reflectionText": "강아지똥은 자기가 쓸모없다고 생각했다. 하지만 민들레를 만나서 꽃을 피우는 데 도움을 주었다. 나는 강아지똥처럼 작아 보이는 것도 큰 도움이 될 수 있다고 생각한다. 그래서 나도 작은 일도 소중히 여기고 싶다.", "expectedScores": { "comprehension": 4, "inference": 4, "criticalThinking": 4, "expression": 4, "vocabGrammar": 3 }, "verified": false },
+    { "id": "g04-mid-weak", "grade": 3, "bookTitle": "프린들 주세요", "bookAuthor": "앤드루 클레먼츠", "reflectionText": "닉은 펜을 프린들이라고 불렀다. 재밌었다.", "expectedScores": { "comprehension": 2, "inference": 1, "criticalThinking": 1, "expression": 1, "vocabGrammar": 2 }, "verified": false },
+    { "id": "g05-mid-mid", "grade": 4, "bookTitle": "몽실 언니", "bookAuthor": "권정생", "reflectionText": "몽실이는 전쟁 중에 힘들게 살았다. 그래서 마음이 아팠다. 몽실이는 동생을 돌보려고 노력했다. 나는 몽실이가 대단하다고 생각한다.", "expectedScores": { "comprehension": 3, "inference": 3, "criticalThinking": 3, "expression": 3, "vocabGrammar": 3 }, "verified": false },
+    { "id": "g06-mid-strong", "grade": 4, "bookTitle": "모모", "bookAuthor": "미하엘 엔데", "reflectionText": "모모는 사람들의 이야기를 잘 들어주는 아이였다. 회색 신사들은 사람들의 시간을 빼앗았다. 왜냐하면 그들은 시간을 훔쳐야 살아갈 수 있었기 때문이다. 나는 진짜 중요한 것은 속도가 아니라 함께하는 시간이라고 생각한다. 그래서 나도 주변 사람과 보내는 시간을 소중히 여기고 싶다.", "expectedScores": { "comprehension": 4, "inference": 5, "criticalThinking": 4, "expression": 4, "vocabGrammar": 4 }, "verified": false },
+    { "id": "g07-high-weak", "grade": 5, "bookTitle": "완득이", "bookAuthor": "김려령", "reflectionText": "완득이는 싸움을 잘했다. 아버지랑 산다.", "expectedScores": { "comprehension": 2, "inference": 1, "criticalThinking": 1, "expression": 2, "vocabGrammar": 2 }, "verified": false },
+    { "id": "g08-high-mid", "grade": 5, "bookTitle": "괭이부리말 아이들", "bookAuthor": "김중미", "reflectionText": "괭이부리말 아이들은 가난했지만 서로 도우며 살아갔다. 나는 이 이야기를 읽고 어려운 환경에서도 서로 돕는 것이 중요하다고 느꼈다. 동네 사람들의 우정이 인상 깊었다.", "expectedScores": { "comprehension": 3, "inference": 3, "criticalThinking": 3, "expression": 3, "vocabGrammar": 3 }, "verified": false },
+    { "id": "g09-high-strong", "grade": 6, "bookTitle": "나의 라임 오렌지나무", "bookAuthor": "J.M. 바스콘셀로스", "reflectionText": "제제는 어린 나이에 많은 아픔을 겪었다. 그럼에도 불구하고 밍기뉴라는 나무와 대화하며 위안을 찾았다. 나는 제제가 힘든 상황에서도 상상력으로 마음을 지켜낸 점이 인상 깊었다. 왜냐하면 어른들의 무관심 속에서도 제제는 스스로 희망을 만들어냈기 때문이다. 이 책을 읽고 나는 힘든 순간에도 나만의 위안을 찾는 것이 중요하다는 것을 깨달았다.", "expectedScores": { "comprehension": 5, "inference": 5, "criticalThinking": 4, "expression": 5, "vocabGrammar": 4 }, "verified": false },
+    { "id": "g10-offtopic", "grade": 3, "bookTitle": "수일이와 수일이", "bookAuthor": "김우경", "reflectionText": "오늘 급식에 떡볶이가 나왔다. 정말 맛있었다.", "expectedScores": { "comprehension": 1, "inference": 1, "criticalThinking": 1, "expression": 1, "vocabGrammar": 2 }, "expectedFlags": { "offTopic": true }, "verified": false },
+    { "id": "g11-low-mid-weak", "grade": 1, "bookTitle": "아낌없이 주는 나무", "bookAuthor": "셸 실버스타인", "reflectionText": "나무는 소년에게 다 주었다. 소년은 늙었다. 나무는 슬펐다.", "expectedScores": { "comprehension": 3, "inference": 2, "criticalThinking": 1, "expression": 2, "vocabGrammar": 2 }, "verified": false },
+    { "id": "g12-high-mid-strong", "grade": 6, "bookTitle": "빨간 머리 앤", "bookAuthor": "루시 모드 몽고메리", "reflectionText": "앤은 상상력이 풍부한 소녀였다. 초록지붕집에서 살게 되면서 여러 사람들과 관계를 맺어갔다. 나는 앤이 실수를 하더라도 솔직하게 사과하고 성장하는 모습이 좋았다. 그래서 나도 실수했을 때 앤처럼 용기 있게 인정하고 싶다.", "expectedScores": { "comprehension": 4, "inference": 4, "criticalThinking": 4, "expression": 4, "vocabGrammar": 4 }, "verified": false }
+  ]
+}

@@ -5,11 +5,18 @@
   "main": "WAS/server.js",
   "scripts": {
     "start": "node WAS/server.js",
-    "dev": "node WAS/server.js"
+    "dev": "node WAS/server.js",
+    "seed:reference": "node DB/seed_reference_data.js",
+    "eval:llm": "node tools/llm-eval/run-eval.js"
+  },
+  "engines": {
+    "node": ">=22 <24"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.2"
   }
 }

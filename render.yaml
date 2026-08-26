@@ -14,3 +14,5 @@ services:
         value: /tmp/airead-data
       - key: TEACHER_PASSWORD
         value: "0000"
+      - key: LLM_ENABLED
+        value: "false"

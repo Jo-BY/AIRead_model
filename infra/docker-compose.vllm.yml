@@ -1,0 +1,37 @@
+# vLLM OpenAI-compatible 서버 (로컬 GPU 전용, RTX 4060 8GB 기준 튜닝).
+# 실행: docker compose --env-file infra/.env -f infra/docker-compose.vllm.yml up -d
+# 모델/로그 확인: docker compose -f infra/docker-compose.vllm.yml logs -f
+# 헬스체크: curl http://localhost:8000/v1/models
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: airead-vllm
+    ipc: host
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+      # WSL2는 기본적으로 pinned memory/UVA가 꺼져 있어 vLLM V2 모델 러너가
+      # "RuntimeError: UVA is not available"로 죽는 것을 방지 (vllm-project/vllm#43381, #47387).
+      - VLLM_WSL2_ENABLE_PIN_MEMORY=1
+    volumes:
+      - vllm-hf-cache:/root/.cache/huggingface
+    command: >
+      --model ${VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
+      --served-model-name ${VLLM_SERVED_MODEL_NAME:-airead-literacy}
+      --quantization awq
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-4096}
+      --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.85}
+      --max-num-seqs ${VLLM_MAX_NUM_SEQS:-2}
+      --enforce-eager
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    restart: unless-stopped
+
+volumes:
+  vllm-hf-cache:

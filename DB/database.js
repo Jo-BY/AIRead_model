@@ -78,12 +78,71 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES student_accounts(id),
       FOREIGN KEY(assignment_id) REFERENCES assignments(id)
     );
+
+    CREATE TABLE IF NOT EXISTS literacy_rubric (
+      id TEXT PRIMARY KEY,
+      indicator_key TEXT NOT NULL,
+      indicator_name TEXT NOT NULL,
+      grade_band TEXT NOT NULL,
+      level INTEGER NOT NULL,
+      descriptor TEXT NOT NULL,
+      source TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS curriculum_standards (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      grade_band TEXT NOT NULL,
+      domain TEXT NOT NULL,
+      description TEXT NOT NULL,
+      indicator_keys_json TEXT NOT NULL,
+      verified INTEGER NOT NULL DEFAULT 0,
+      source TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS recommended_textbooks (
+      id TEXT PRIMARY KEY,
+      indicator_key TEXT NOT NULL,
+      grade_band TEXT NOT NULL,
+      type TEXT,
+      subject TEXT,
+      unit TEXT NOT NULL,
+      linked_standard_codes_json TEXT,
+      verified INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS recommended_books (
+      id TEXT PRIMARY KEY,
+      indicator_key TEXT NOT NULL,
+      grade_band TEXT NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT,
+      reason TEXT,
+      source TEXT
+    );
   `);
 
   const columns = db.prepare("PRAGMA table_info(student_accounts)").all();
   const hasGradeColumn = columns.some((col) => col.name === "grade");
   if (!hasGradeColumn) {
     db.exec("ALTER TABLE student_accounts ADD COLUMN grade INTEGER NOT NULL DEFAULT 1");
+  }
+
+  function ensureColumn(table, column, definition) {
+    const tableColumns = db.prepare(`PRAGMA table_info(${table})`).all();
+    const exists = tableColumns.some((col) => col.name === column);
+    if (!exists) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
+
+  // LLM 평가 결과(근거 인용, 모델/프롬프트 버전, 신뢰도)를 저장하기 위한 컬럼 확장.
+  for (const table of ["literacy_evaluations", "assignment_submissions"]) {
+    ensureColumn(table, "evidence_json", "TEXT");
+    ensureColumn(table, "model_version", "TEXT");
+    ensureColumn(table, "prompt_version", "TEXT");
+    ensureColumn(table, "confidence", "TEXT");
+    ensureColumn(table, "needs_review", "INTEGER NOT NULL DEFAULT 0");
   }
 
   // Merge legacy duplicates so one student key maps to one account consistently.
@@ -201,9 +260,14 @@ function createSubmission(studentId, reflection, evaluation) {
         critical_thinking,
         expression,
         vocab_grammar,
-        feedback_json
+        feedback_json,
+        evidence_json,
+        model_version,
+        prompt_version,
+        confidence,
+        needs_review
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     evaluationStmt.run(
@@ -214,7 +278,12 @@ function createSubmission(studentId, reflection, evaluation) {
       evaluation.scores.criticalThinking,
       evaluation.scores.expression,
       evaluation.scores.vocabGrammar,
-      JSON.stringify(evaluation.feedback)
+      JSON.stringify(evaluation.feedback),
+      evaluation.evidence ? JSON.stringify(evaluation.evidence) : null,
+      evaluation.modelVersion || null,
+      evaluation.promptVersion || null,
+      evaluation.confidence || null,
+      evaluation.needsReview ? 1 : 0
     );
 
     return {
@@ -308,9 +377,14 @@ function createAssignmentSubmission(studentId, assignmentId, answerText, evaluat
         critical_thinking,
         expression,
         vocab_grammar,
-        feedback_json
+        feedback_json,
+        evidence_json,
+        model_version,
+        prompt_version,
+        confidence,
+        needs_review
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     evaluationStmt.run(
@@ -321,7 +395,12 @@ function createAssignmentSubmission(studentId, assignmentId, answerText, evaluat
       evaluation.scores.criticalThinking,
       evaluation.scores.expression,
       evaluation.scores.vocabGrammar,
-      JSON.stringify(evaluation.feedback)
+      JSON.stringify(evaluation.feedback),
+      evaluation.evidence ? JSON.stringify(evaluation.evidence) : null,
+      evaluation.modelVersion || null,
+      evaluation.promptVersion || null,
+      evaluation.confidence || null,
+      evaluation.needsReview ? 1 : 0
     );
 
     const submissionStmt = db.prepare(`
@@ -335,9 +414,14 @@ function createAssignmentSubmission(studentId, assignmentId, answerText, evaluat
         critical_thinking,
         expression,
         vocab_grammar,
-        feedback_json
+        feedback_json,
+        evidence_json,
+        model_version,
+        prompt_version,
+        confidence,
+        needs_review
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const submissionResult = submissionStmt.run(
@@ -350,7 +434,12 @@ function createAssignmentSubmission(studentId, assignmentId, answerText, evaluat
       evaluation.scores.criticalThinking,
       evaluation.scores.expression,
       evaluation.scores.vocabGrammar,
-      JSON.stringify(evaluation.feedback)
+      JSON.stringify(evaluation.feedback),
+      evaluation.evidence ? JSON.stringify(evaluation.evidence) : null,
+      evaluation.modelVersion || null,
+      evaluation.promptVersion || null,
+      evaluation.confidence || null,
+      evaluation.needsReview ? 1 : 0
     );
 
     return {
@@ -393,7 +482,12 @@ function getDashboard(limit = 100, studentId = null) {
         e.critical_thinking,
         e.expression,
         e.vocab_grammar,
-        e.feedback_json
+        e.feedback_json,
+        e.evidence_json,
+        e.model_version,
+        e.prompt_version,
+        e.confidence,
+        e.needs_review
       FROM book_reflections r
       JOIN student_accounts s ON r.student_id = s.id
       JOIN literacy_evaluations e ON e.reflection_id = r.id
@@ -434,7 +528,9 @@ function getDashboard(limit = 100, studentId = null) {
     stats,
     rows: rows.map((row) => ({
       ...row,
-      feedback: JSON.parse(row.feedback_json || "{}")
+      feedback: JSON.parse(row.feedback_json || "{}"),
+      evidence: row.evidence_json ? JSON.parse(row.evidence_json) : null,
+      needs_review: Boolean(row.needs_review)
     }))
   };
 }
@@ -461,7 +557,12 @@ function getStudentReflectionDetail(studentId, reflectionId) {
         e.critical_thinking,
         e.expression,
         e.vocab_grammar,
-        e.feedback_json
+        e.feedback_json,
+        e.evidence_json,
+        e.model_version,
+        e.prompt_version,
+        e.confidence,
+        e.needs_review
       FROM book_reflections r
       JOIN student_accounts s ON r.student_id = s.id
       JOIN literacy_evaluations e ON e.reflection_id = r.id
@@ -496,6 +597,8 @@ function getStudentReflectionDetail(studentId, reflectionId) {
   return {
     ...row,
     feedback: JSON.parse(row.feedback_json || "{}"),
+    evidence: row.evidence_json ? JSON.parse(row.evidence_json) : null,
+    needs_review: Boolean(row.needs_review),
     peer_average: {
       peer_count: Number(peerAvg?.peer_count || 0),
       comprehension: Number(peerAvg?.comprehension || 0),
@@ -505,6 +608,134 @@ function getStudentReflectionDetail(studentId, reflectionId) {
       vocab_grammar: Number(peerAvg?.vocab_grammar || 0)
     }
   };
+}
+
+function replaceReferenceTable(table, rows, mapToColumns) {
+  const insertTx = db.transaction((items) => {
+    db.prepare(`DELETE FROM ${table}`).run();
+    for (const item of items) {
+      const record = mapToColumns(item);
+      const keys = Object.keys(record);
+      const placeholders = keys.map(() => "?").join(", ");
+      db.prepare(`INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`).run(
+        ...keys.map((key) => record[key])
+      );
+    }
+  });
+  insertTx(rows);
+  return rows.length;
+}
+
+function seedRubric(items) {
+  return replaceReferenceTable("literacy_rubric", items, (item) => ({
+    id: item.id,
+    indicator_key: item.indicatorKey,
+    indicator_name: item.indicatorName,
+    grade_band: item.gradeBand,
+    level: item.level,
+    descriptor: item.descriptor,
+    source: item.source || null
+  }));
+}
+
+function seedCurriculumStandards(items) {
+  return replaceReferenceTable("curriculum_standards", items, (item) => ({
+    id: item.id,
+    code: item.code,
+    grade_band: item.gradeBand,
+    domain: item.domain,
+    description: item.description,
+    indicator_keys_json: JSON.stringify(item.indicatorKeys || []),
+    verified: item.verified ? 1 : 0,
+    source: item.source || null
+  }));
+}
+
+function seedRecommendedTextbooks(items) {
+  return replaceReferenceTable("recommended_textbooks", items, (item) => ({
+    id: item.id,
+    indicator_key: item.indicatorKey,
+    grade_band: item.gradeBand,
+    type: item.type || null,
+    subject: item.subject || null,
+    unit: item.unit,
+    linked_standard_codes_json: JSON.stringify(item.linkedStandardCodes || []),
+    verified: item.verified ? 1 : 0
+  }));
+}
+
+function seedRecommendedBooks(items) {
+  return replaceReferenceTable("recommended_books", items, (item) => ({
+    id: item.id,
+    indicator_key: item.indicatorKey,
+    grade_band: item.gradeBand,
+    title: item.title,
+    author: item.author || null,
+    reason: item.reason || null,
+    source: item.source || null
+  }));
+}
+
+function getRubricByGradeBand(gradeBand) {
+  return db
+    .prepare(
+      `
+      SELECT id, indicator_key AS indicatorKey, indicator_name AS indicatorName,
+             grade_band AS gradeBand, level, descriptor, source
+      FROM literacy_rubric
+      WHERE grade_band = ?
+      ORDER BY indicator_key, level
+    `
+    )
+    .all(gradeBand);
+}
+
+function getCurriculumStandardsByGradeBand(gradeBand) {
+  return db
+    .prepare(
+      `
+      SELECT id, code, grade_band AS gradeBand, domain, description,
+             indicator_keys_json AS indicatorKeysJson, verified, source
+      FROM curriculum_standards
+      WHERE grade_band = ?
+    `
+    )
+    .all(gradeBand)
+    .map((row) => ({
+      ...row,
+      indicatorKeys: JSON.parse(row.indicatorKeysJson || "[]"),
+      verified: Boolean(row.verified)
+    }));
+}
+
+function getRecommendedTextbooks(gradeBand, indicatorKey) {
+  return db
+    .prepare(
+      `
+      SELECT id, indicator_key AS indicatorKey, grade_band AS gradeBand, type, subject, unit,
+             linked_standard_codes_json AS linkedStandardCodesJson, verified
+      FROM recommended_textbooks
+      WHERE grade_band = ? AND indicator_key = ?
+    `
+    )
+    .all(gradeBand, indicatorKey)
+    .map((row) => ({
+      ...row,
+      linkedStandardCodes: JSON.parse(row.linkedStandardCodesJson || "[]"),
+      verified: Boolean(row.verified)
+    }));
+}
+
+function getRecommendedBooks(gradeBand, indicatorKey) {
+  return db
+    .prepare(
+      `
+      SELECT id, indicator_key AS indicatorKey, grade_band AS gradeBand, title, author, reason, source
+      FROM recommended_books
+      WHERE grade_band = ? AND indicator_key = ?
+    `
+    )
+    .all(gradeBand, indicatorKey);
 }
 
 module.exports = {
@@ -518,5 +749,13 @@ module.exports = {
   getAssignments,
   createAssignmentSubmission,
   getDashboard,
-  getStudentReflectionDetail
+  getStudentReflectionDetail,
+  seedRubric,
+  seedCurriculumStandards,
+  seedRecommendedTextbooks,
+  seedRecommendedBooks,
+  getRubricByGradeBand,
+  getCurriculumStandardsByGradeBand,
+  getRecommendedTextbooks,
+  getRecommendedBooks
 };

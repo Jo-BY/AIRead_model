@@ -2,6 +2,7 @@ const logoutButton = document.getElementById("logoutButton");
 const loginStatusEl = document.getElementById("loginStatus");
 const form = document.getElementById("submissionForm");
 const totalScoreEl = document.getElementById("totalScore");
+const evaluationMetaBadgeEl = document.getElementById("evaluationMetaBadge");
 const scoreRowsEl = document.getElementById("scoreRows");
 const indicatorListEl = document.getElementById("indicatorList");
 const dashboardBodyEl = document.getElementById("dashboardBody");
@@ -19,6 +20,7 @@ const aiDiagnosisMetaEl = document.getElementById("aiDiagnosisMeta");
 const aiDiagnosisEmptyEl = document.getElementById("aiDiagnosisEmpty");
 const aiDiagnosisPanelEl = document.getElementById("aiDiagnosisPanel");
 const aiDiagnosisHeadlineEl = document.getElementById("aiDiagnosisHeadline");
+const aiDiagnosisConfidenceBadgeEl = document.getElementById("aiDiagnosisConfidenceBadge");
 const aiDiagnosisOverviewEl = document.getElementById("aiDiagnosisOverview");
 const aiDiagnosisTimelineListEl = document.getElementById("aiDiagnosisTimelineList");
 const aiDiagnosisIndicatorListEl = document.getElementById("aiDiagnosisIndicatorList");
@@ -33,6 +35,7 @@ const studentDetailMetaEl = document.getElementById("studentDetailMeta");
 const studentDetailTotalScoreEl = document.getElementById("studentDetailTotalScore");
 const studentDetailSummaryEl = document.getElementById("studentDetailSummary");
 const studentIndicatorScoreListEl = document.getElementById("studentIndicatorScoreList");
+const studentDetailScoreRowsEl = document.getElementById("studentDetailScoreRows");
 const studentRadarChartEl = document.getElementById("studentRadarChart");
 const studentRadarLegendEl = document.getElementById("studentRadarLegend");
 const studentDetailReflectionTextEl = document.getElementById("studentDetailReflectionText");
@@ -302,7 +305,7 @@ async function loadAssignmentsForStudent() {
   studentAssignments = data.assignments || [];
 
   if (!studentAssignments.length) {
-    studentAssignmentListEl.innerHTML = "<li>아직 등록된 과제가 없어요.</li>";
+    studentAssignmentListEl.innerHTML = "<li>📝 아직 등록된 과제가 없어요.</li>";
     renderStudentAssignmentDetail(null);
     return;
   }
@@ -812,7 +815,7 @@ function drawTimelineAxes(svg, geometry, maxValue, tickCount, rows) {
       y1: y.toFixed(2),
       x2: (left + geometry.usableWidth).toFixed(2),
       y2: y.toFixed(2),
-      stroke: "#deebf8",
+      stroke: "#e6def5",
       "stroke-width": 1
     });
     svg.appendChild(grid);
@@ -823,7 +826,7 @@ function drawTimelineAxes(svg, geometry, maxValue, tickCount, rows) {
       "text-anchor": "end",
       "font-size": 12,
       "font-weight": 700,
-      fill: "#43607e"
+      fill: "#5b5480"
     });
     label.textContent = value.toFixed(value % 1 === 0 ? 0 : 1);
     svg.appendChild(label);
@@ -834,7 +837,7 @@ function drawTimelineAxes(svg, geometry, maxValue, tickCount, rows) {
     y1: chartBottom,
     x2: left + geometry.usableWidth,
     y2: chartBottom,
-    stroke: "#7f9bbb",
+    stroke: "#8b7eb8",
     "stroke-width": 1.5
   });
   svg.appendChild(axisX);
@@ -857,7 +860,7 @@ function drawTimelineAxes(svg, geometry, maxValue, tickCount, rows) {
       y1: chartBottom,
       x2: x.toFixed(2),
       y2: chartBottom + 6,
-      stroke: "#7f9bbb",
+      stroke: "#8b7eb8",
       "stroke-width": 1.3
     });
     svg.appendChild(tick);
@@ -868,7 +871,7 @@ function drawTimelineAxes(svg, geometry, maxValue, tickCount, rows) {
       "text-anchor": "middle",
       "font-size": 11,
       "font-weight": 700,
-      fill: "#466382"
+      fill: "#4f4577"
     });
     label.textContent = formatTimelineDateLabel(row.submitted_at);
     svg.appendChild(label);
@@ -1010,6 +1013,7 @@ function renderAiDiagnosis(result) {
   aiDiagnosisPanelEl.hidden = !hasData;
 
   aiDiagnosisHeadlineEl.textContent = diagnosis.headline || "AI 진단 결과";
+  renderConfidenceBadge(aiDiagnosisConfidenceBadgeEl, meta);
   aiDiagnosisOverviewEl.textContent = diagnosis.overview || "";
 
   renderSimpleList(aiDiagnosisTimelineListEl, diagnosis.timelineInsights || []);
@@ -1104,8 +1108,8 @@ function renderStudentRadarChart(selfScores, peerScores, peerCount) {
     const ringValues = radarIndicators.map(() => level);
     const ring = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     ring.setAttribute("points", toRadarPoints(ringValues, cx, cy, radius));
-    ring.setAttribute("fill", level % 2 ? "#f8fbff" : "#eef5ff");
-    ring.setAttribute("stroke", "#d4dfef");
+    ring.setAttribute("fill", level % 2 ? "#faf8fd" : "#f1ecfb");
+    ring.setAttribute("stroke", "#ddd0f0");
     ring.setAttribute("stroke-width", "1");
     svg.appendChild(ring);
   }
@@ -1122,7 +1126,7 @@ function renderStudentRadarChart(selfScores, peerScores, peerCount) {
     axis.setAttribute("y1", String(cy));
     axis.setAttribute("x2", x.toFixed(2));
     axis.setAttribute("y2", y.toFixed(2));
-    axis.setAttribute("stroke", "#c3d2e7");
+    axis.setAttribute("stroke", "#c9bce4");
     axis.setAttribute("stroke-width", "1");
     svg.appendChild(axis);
 
@@ -1132,7 +1136,7 @@ function renderStudentRadarChart(selfScores, peerScores, peerCount) {
     label.setAttribute("text-anchor", "middle");
     label.setAttribute("font-size", "12");
     label.setAttribute("font-weight", "700");
-    label.setAttribute("fill", "#385270");
+    label.setAttribute("fill", "#453a6b");
     label.textContent = indicator.label;
     svg.appendChild(label);
   });
@@ -1170,6 +1174,20 @@ function pickSummaryText(detail) {
   return parts.slice(0, 2).join(" ");
 }
 
+function createScoreRowElement(key, value, feedbackText, evidenceText) {
+  const row = document.createElement("div");
+  row.className = "score-row";
+
+  const percent = (value / 5) * 100;
+  row.innerHTML = `
+    <strong>${indicatorNameMap[key] || key}: ${value}/5</strong>
+    <div class="bar"><div class="fill" style="width:${percent}%"></div></div>
+    <div>${feedbackText || ""}</div>
+    ${evidenceText ? `<div class="evidence-quote">근거: "${evidenceText}"</div>` : ""}
+  `;
+  return row;
+}
+
 function renderStudentDetail(detail) {
   const submittedAt = new Date(detail.submitted_at).toLocaleString("ko-KR");
   studentDetailTitleEl.textContent = `${detail.book_title} 독서 기록`;
@@ -1191,6 +1209,15 @@ function renderStudentDetail(detail) {
       <strong>${selfScores[idx].toFixed(1)}/5 · 평균 ${peerScores[idx].toFixed(1)}/5</strong>
     `;
     studentIndicatorScoreListEl.appendChild(li);
+  });
+
+  studentDetailScoreRowsEl.innerHTML = "";
+  radarIndicators.forEach((indicator, idx) => {
+    const feedbackText = detail.feedback?.[indicator.feedbackKey];
+    const evidenceText = detail.evidence?.[indicator.feedbackKey];
+    studentDetailScoreRowsEl.appendChild(
+      createScoreRowElement(indicator.feedbackKey, selfScores[idx], feedbackText, evidenceText)
+    );
   });
 
   renderStudentRadarChart(selfScores, peerScores, peerCount);
@@ -1524,20 +1551,36 @@ function activateView(viewName) {
   });
 }
 
+const CONFIDENCE_LABEL = { high: "신뢰도 높음", medium: "신뢰도 보통", low: "신뢰도 낮음" };
+
+function renderConfidenceBadge(el, { confidence, needsReview, modelVersion }) {
+  if (!confidence && !needsReview) {
+    el.hidden = true;
+    return;
+  }
+
+  el.hidden = false;
+  el.classList.remove("confidence-high", "confidence-medium", "confidence-low", "confidence-review");
+  el.classList.add(`confidence-${confidence || "medium"}`);
+  if (needsReview) {
+    el.classList.add("confidence-review");
+  }
+
+  const isFallback = modelVersion === "rule-based-fallback" || modelVersion === "template-fallback";
+  const parts = [CONFIDENCE_LABEL[confidence] || "신뢰도 보통"];
+  if (needsReview) {
+    parts.push(isFallback ? "AI 서버 연결 실패 - 규칙 기반 결과 (교사 확인 권장)" : "교사 확인 권장");
+  }
+  el.textContent = parts.join(" · ");
+}
+
 function renderEvaluation(evaluation) {
   totalScoreEl.textContent = evaluation.totalScore;
   scoreRowsEl.innerHTML = "";
+  renderConfidenceBadge(evaluationMetaBadgeEl, evaluation);
 
   Object.entries(evaluation.scores).forEach(([key, value]) => {
-    const row = document.createElement("div");
-    row.className = "score-row";
-
-    const percent = (value / 5) * 100;
-    row.innerHTML = `
-      <strong>${indicatorNameMap[key] || key}: ${value}/5</strong>
-      <div class="bar"><div class="fill" style="width:${percent}%"></div></div>
-      <div>${evaluation.feedback[key] || ""}</div>
-    `;
+    const row = createScoreRowElement(key, value, evaluation.feedback[key], evaluation.evidence?.[key]);
     scoreRowsEl.appendChild(row);
   });
 }
@@ -1557,7 +1600,7 @@ function renderDashboard(data) {
 
   if (!data.rows.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="4">아직 저장된 평가가 없어요. 문해력 평가 메뉴에서 첫 감상문을 작성해보세요.</td>`;
+    tr.innerHTML = `<td colspan="4">🌱 아직 저장된 평가가 없어요. 문해력 평가 메뉴에서 첫 감상문을 작성해보세요.</td>`;
     dashboardBodyEl.appendChild(tr);
     return;
   }
