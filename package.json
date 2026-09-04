@@ -7,7 +7,8 @@
     "start": "node WAS/server.js",
     "dev": "node WAS/server.js",
     "seed:reference": "node DB/seed_reference_data.js",
-    "eval:llm": "node tools/llm-eval/run-eval.js"
+    "eval:llm": "node tools/llm-eval/run-eval.js",
+    "postinstall": "npm rebuild better-sqlite3"
   },
   "engines": {
     "node": ">=22 <24"
