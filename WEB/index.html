@@ -22,6 +22,7 @@
           <button type="button" class="gnb-btn student-only active" data-view="dashboard">내 대시보드</button>
           <button type="button" class="gnb-btn student-only" data-view="timeline">성장 타임라인</button>
           <button type="button" class="gnb-btn student-only" data-view="evaluation">문해력 평가</button>
+          <button type="button" class="gnb-btn student-only" data-view="ai-discussion">AI 독서토론</button>
           <button type="button" class="gnb-btn teacher-only" data-view="teacher-dashboard">전체 학생 히스토리</button>
           <button type="button" class="gnb-btn teacher-only" data-view="assignment-create">과제 생성</button>
         </nav>
@@ -60,7 +61,6 @@
       <section class="panel view-panel active" id="view-dashboard">
         <div class="dashboard-header">
           <h2>내 대시보드</h2>
-          <button id="refreshButton" class="small-btn" type="button">새로고침</button>
         </div>
 
         <div class="dashboard-chip-row" aria-label="학생 빠른 이동">
@@ -69,10 +69,19 @@
         </div>
 
         <div class="stats" id="stats"></div>
-        <div class="table-wrap">
+        <div class="dashboard-filter-row">
+          <input type="search" id="dashboardSearchInput" class="dashboard-search-input" placeholder="🔍 책 제목·평가 요약 검색" />
+          <select id="dashboardSourceFilter" class="dashboard-filter-select">
+            <option value="all">구분: 전체</option>
+            <option value="self">구분: 본인</option>
+            <option value="teacher">구분: 교사</option>
+          </select>
+        </div>
+        <div class="table-wrap dashboard-table-wrap">
           <table>
             <thead>
               <tr>
+                <th>구분</th>
                 <th>책</th>
                 <th>총점</th>
                 <th>평가 요약</th>
@@ -95,11 +104,11 @@
         </div>
         <div class="timeline-chart-group" id="timelineChartGroup">
           <div class="timeline-chart-card">
-            <h3>총점 변화 (25점 만점)</h3>
+            <h3>총점 변화</h3>
             <svg id="timelineTotalChart" viewBox="0 0 920 280" aria-label="총점 타임라인 그래프"></svg>
           </div>
           <div class="timeline-chart-card">
-            <h3>지표별 점수 변화 (5점 만점)</h3>
+            <h3>지표별 점수 변화</h3>
             <svg id="timelineIndicatorChart" viewBox="0 0 920 320" aria-label="지표별 점수 타임라인 그래프"></svg>
             <div id="timelineIndicatorLegend" class="timeline-legend"></div>
           </div>
@@ -145,10 +154,60 @@
         </div>
       </section>
 
+      <section class="panel view-panel" id="view-ai-discussion">
+        <div class="dashboard-header">
+          <h2>AI 독서토론</h2>
+          <button id="discussionNewButton" class="small-btn" type="button">새 토론 시작</button>
+        </div>
+
+        <div class="discussion-layout">
+          <div class="discussion-list-panel">
+            <h3>내 토론 목록</h3>
+            <ul id="discussionList" class="discussion-list"></ul>
+          </div>
+
+          <div class="discussion-main-panel">
+            <div id="discussionStartForm" class="discussion-start-form">
+              <p class="discussion-intro">토론하고 싶은 책의 제목과 저자를 입력하면, AI와 1:1로 독서 토론을 시작할 수 있어요.</p>
+              <div class="grid-2">
+                <label>
+                  책 제목
+                  <input id="discussionBookTitleInput" required placeholder="예: 마당을 나온 암탉" />
+                </label>
+                <label>
+                  저자(선택)
+                  <input id="discussionBookAuthorInput" placeholder="예: 황선미" />
+                </label>
+              </div>
+              <button type="button" id="discussionStartButton" class="rainbow-btn">토론 시작하기</button>
+            </div>
+
+            <div id="discussionChatPanel" class="discussion-chat-panel" hidden>
+              <div class="discussion-chat-header">
+                <div>
+                  <h3 id="discussionChatTitle">-</h3>
+                  <span id="discussionChatAuthor" class="discussion-chat-author"></span>
+                </div>
+              </div>
+              <div id="discussionMessages" class="discussion-messages"></div>
+              <form id="discussionChatForm" class="discussion-chat-form">
+                <textarea id="discussionChatInput" rows="2" placeholder="책에 대한 생각이나 질문을 입력해 보세요." required></textarea>
+                <button type="submit" id="discussionSendButton" class="rainbow-btn">전송</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="panel view-panel" id="view-ai-diagnosis">
         <div class="dashboard-header">
           <h2>AI 진단/추천</h2>
           <button id="aiDiagnosisRefreshButton" class="small-btn" type="button">분석 새로고침</button>
+        </div>
+
+        <div class="ai-history-wrap">
+          <h4>지난 진단 기록</h4>
+          <div id="aiDiagnosisHistoryList" class="ai-history-list"></div>
         </div>
 
         <p id="aiDiagnosisMeta" class="ai-meta"></p>
@@ -232,11 +291,15 @@
       <section class="panel view-panel" id="view-teacher-dashboard">
         <div class="dashboard-header">
           <h2>전체 학생 문해력 평가 히스토리</h2>
-          <button id="teacherRefreshButton" class="small-btn" type="button">새로고침</button>
+        </div>
+
+        <div class="dashboard-chip-row" aria-label="교사 대시보드 빠른 이동">
+          <button type="button" class="dashboard-chip active" data-teacher-panel="dashboard">대시보드</button>
+          <button type="button" class="dashboard-chip" data-teacher-panel="history">히스토리</button>
         </div>
 
         <div class="teacher-split-layout">
-          <div class="teacher-dashboard-box teacher-main-box">
+          <div class="teacher-dashboard-box teacher-main-box teacher-tab-panel active" data-teacher-panel="dashboard">
             <div class="teacher-box-header">
               <h3>대시보드</h3>
             </div>
@@ -252,11 +315,37 @@
               <div class="teacher-box-header">
                 <h3>학생별 평가 점수 통계 및 성장 추이</h3>
               </div>
+              <div class="teacher-filters teacher-trend-filters">
+                <label>
+                  학교 검색
+                  <input id="teacherTrendSchoolInput" type="text" placeholder="예: 무지개초등학교" />
+                </label>
+                <label>
+                  학생명 검색
+                  <input id="teacherTrendNameInput" type="text" placeholder="예: 김하늘" />
+                </label>
+                <label>
+                  반
+                  <select id="teacherTrendClassFilter">
+                    <option value="">전체</option>
+                  </select>
+                </label>
+                <label>
+                  점수 이상
+                  <input id="teacherTrendMinScoreInput" type="number" min="0" max="100" placeholder="예: 60" />
+                </label>
+                <label>
+                  점수 이하
+                  <input id="teacherTrendMaxScoreInput" type="number" min="0" max="100" placeholder="예: 90" />
+                </label>
+                <button id="teacherTrendFilterResetButton" class="small-btn" type="button">필터 초기화</button>
+              </div>
               <div id="teacherStudentTrendList" class="teacher-student-trend-list"></div>
+              <div id="teacherStudentTrendPagination" class="teacher-trend-pagination"></div>
             </div>
           </div>
 
-          <div class="teacher-dashboard-box teacher-history-box">
+          <div class="teacher-dashboard-box teacher-history-box teacher-tab-panel" data-teacher-panel="history">
             <div class="teacher-box-header">
               <h3>히스토리</h3>
             </div>
@@ -286,19 +375,100 @@
               <button id="teacherFilterResetButton" class="small-btn" type="button">필터 초기화</button>
             </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>학생</th>
-                    <th>학교/학급</th>
-                    <th>평가 건수</th>
-                    <th>평균 점수</th>
-                    <th>최근 제출일</th>
-                  </tr>
-                </thead>
-                <tbody id="teacherDashboardBody"></tbody>
-              </table>
+            <div class="teacher-history-layout">
+              <div class="teacher-history-list-panel">
+                <div class="table-wrap teacher-history-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>학생</th>
+                        <th>학교/학급</th>
+                      </tr>
+                    </thead>
+                    <tbody id="teacherDashboardBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="teacher-history-detail-panel">
+                <div id="teacherHistoryDetailEmpty" class="teacher-overview-empty">왼쪽 목록에서 학생을 선택해주세요.</div>
+                <div id="teacherHistoryDetailContent" hidden>
+                  <h4 id="teacherHistoryDetailName"></h4>
+
+                  <div class="history-tab-chip-row" aria-label="학생 상세 탭">
+                    <button type="button" class="history-tab-chip active" data-history-tab="books">도서 목록</button>
+                    <button type="button" class="history-tab-chip" data-history-tab="timeline">성장 타임라인</button>
+                    <button type="button" class="history-tab-chip" data-history-tab="ai">AI 진단·추천</button>
+                  </div>
+
+                  <div class="teacher-history-tab-content active" data-history-tab-content="books">
+                    <div id="teacherHistoryBookList" class="teacher-submission-list"></div>
+                  </div>
+
+                  <div class="teacher-history-tab-content" data-history-tab-content="timeline">
+                    <p id="teacherHistoryTimelineSummary" class="timeline-summary"></p>
+                    <div id="teacherHistoryTimelineEmpty" class="timeline-empty" hidden>
+                      아직 그래프로 표시할 평가 기록이 없어요.
+                    </div>
+                    <div class="timeline-chart-group" id="teacherHistoryTimelineChartGroup">
+                      <div class="timeline-chart-card">
+                        <h3>총점 변화</h3>
+                        <svg id="teacherHistoryTotalChart" viewBox="0 0 920 280" aria-label="총점 타임라인 그래프"></svg>
+                      </div>
+                      <div class="timeline-chart-card">
+                        <h3>지표별 점수 변화</h3>
+                        <svg id="teacherHistoryIndicatorChart" viewBox="0 0 920 320" aria-label="지표별 점수 타임라인 그래프"></svg>
+                        <div id="teacherHistoryIndicatorLegend" class="timeline-legend"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="teacher-history-tab-content" data-history-tab-content="ai">
+                    <div class="ai-history-wrap">
+                      <h4>지난 진단 기록</h4>
+                      <div id="teacherHistoryAiHistoryList" class="ai-history-list"></div>
+                    </div>
+                    <p id="teacherHistoryAiMeta" class="ai-meta"></p>
+                    <div id="teacherHistoryAiEmpty" class="timeline-empty" hidden>
+                      분석할 평가 기록이 부족합니다.
+                    </div>
+                    <div id="teacherHistoryAiPanel" class="ai-panel-group">
+                      <div class="ai-card">
+                        <h3 id="teacherHistoryAiHeadline">AI 진단 결과</h3>
+                        <div id="teacherHistoryAiConfidenceBadge" class="confidence-badge" hidden></div>
+                        <p id="teacherHistoryAiOverview" class="ai-overview"></p>
+                      </div>
+
+                      <div class="ai-grid-2">
+                        <div class="ai-card">
+                          <h4>타임라인 성장 진단</h4>
+                          <ul id="teacherHistoryAiTimelineList" class="ai-list"></ul>
+                        </div>
+                        <div class="ai-card">
+                          <h4>지표별 상세 진단</h4>
+                          <ul id="teacherHistoryAiIndicatorList" class="ai-list"></ul>
+                        </div>
+                      </div>
+
+                      <div class="ai-grid-2">
+                        <div class="ai-card">
+                          <h4>교과서 연계 추천</h4>
+                          <ul id="teacherHistoryAiTextbookList" class="ai-rec-list"></ul>
+                        </div>
+                        <div class="ai-card">
+                          <h4>도서 추천</h4>
+                          <ul id="teacherHistoryAiBookList" class="ai-rec-list"></ul>
+                        </div>
+                      </div>
+
+                      <div class="ai-card">
+                        <h4>개인 맞춤 실행 계획</h4>
+                        <ul id="teacherHistoryAiActionPlanList" class="ai-list"></ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -308,12 +478,7 @@
     <div class="teacher-modal-overlay" id="teacherDetailModal" aria-hidden="true">
       <div class="teacher-modal-card" id="teacherDetailCard" role="dialog" aria-modal="true" aria-labelledby="teacherDetailTitle">
         <div class="teacher-window-titlebar" id="teacherDetailDragBar">
-          <div class="teacher-window-dots" aria-hidden="true">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-          </div>
-          <div class="teacher-window-title">AIRead · Student History Frame</div>
+          <div class="teacher-window-title">📊 학생 히스토리</div>
           <div class="teacher-window-actions">
             <button id="teacherDetailCloseButton" class="small-btn" type="button">닫기</button>
           </div>
@@ -322,22 +487,7 @@
           <h3 id="teacherDetailTitle">학생 상세 히스토리</h3>
         </div>
         <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>제출일</th>
-                <th>책</th>
-                <th>총점</th>
-                <th>내용이해</th>
-                <th>추론</th>
-                <th>비판</th>
-                <th>표현</th>
-                <th>어휘</th>
-                <th>학생이 작성한 글</th>
-              </tr>
-            </thead>
-            <tbody id="teacherDetailBody"></tbody>
-          </table>
+          <div id="teacherDetailBody" class="teacher-submission-list"></div>
         </div>
         <div class="teacher-resize-handle" id="teacherResizeHandle" aria-hidden="true"></div>
       </div>
@@ -346,12 +496,7 @@
     <div class="student-modal-overlay" id="studentDetailModal" aria-hidden="true">
       <div class="student-modal-card" role="dialog" aria-modal="true" aria-labelledby="studentDetailTitle">
         <div class="student-window-titlebar">
-          <div class="teacher-window-dots" aria-hidden="true">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-          </div>
-          <div class="teacher-window-title">AIRead · My Reflection Frame</div>
+          <div class="teacher-window-title">📖 내 독서 기록</div>
           <div class="teacher-window-actions">
             <button id="studentDetailCloseButton" class="small-btn" type="button">닫기</button>
           </div>
@@ -387,6 +532,18 @@
             <p id="studentDetailReflectionText"></p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="evaluation-progress-overlay" id="evaluationProgressOverlay" aria-hidden="true">
+      <div class="evaluation-progress-card" role="status" aria-live="polite">
+        <div class="evaluation-progress-icon">🤖</div>
+        <h3 id="evaluationProgressTitle">AI가 감상문을 평가하고 있어요</h3>
+        <p id="evaluationProgressMessage">잠시만 기다려 주세요...</p>
+        <div class="evaluation-progress-track">
+          <div class="evaluation-progress-fill" id="evaluationProgressFill" style="width: 0%"></div>
+        </div>
+        <div class="evaluation-progress-percent" id="evaluationProgressPercent">0%</div>
       </div>
     </div>
 

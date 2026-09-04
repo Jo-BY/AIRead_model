@@ -1,4 +1,6 @@
 const path = require("path");
+// DB/llm 모듈이 module-load 시점에 process.env를 읽으므로, 그 require보다 먼저 .env를 로드해야 한다.
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const express = require("express");
 const cors = require("cors");
 const {
@@ -11,10 +13,18 @@ const {
   getAssignments,
   createAssignmentSubmission,
   getDashboard,
-  getStudentReflectionDetail
+  getStudentReflectionDetail,
+  createDiscussionSession,
+  getDiscussionSessionById,
+  getDiscussionSessionsByStudent,
+  getDiscussionMessages,
+  addDiscussionMessage,
+  createAiDiagnosis,
+  getLatestAiDiagnosis,
+  getAiDiagnosisHistory
 } = require("../DB/database");
 const { INDICATORS } = require("./services/evaluator");
-const { evaluateWithLLM, diagnoseWithLLM, checkLlmHealth } = require("./services/llm/llmLiteracyService");
+const { evaluateWithLLM, diagnoseWithLLM, chatDiscussionReply, checkLlmHealth } = require("./services/llm/llmLiteracyService");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -135,7 +145,7 @@ async function buildStudentDiagnosis(student, rows) {
 
   const timelineInsights = [
     `초기 대비 최근 총점 변화: ${firstTotal.toFixed(1)}점 -> ${latestTotal.toFixed(1)}점 (${totalDelta >= 0 ? "+" : ""}${totalDelta.toFixed(1)}점)`,
-    `타임라인 추세는 ${trendText} 흐름입니다. (회차당 기울기 ${totalSlope.toFixed(2)})`,
+    `타임라인 추세는 ${trendText} 흐름입니다.`,
     `최근 ${recentWindow.length}회 평균 총점: ${average(recentWindow.map((row) => normalizeTotalTo100(row.total_score))).toFixed(1)}점`
   ];
 
@@ -387,6 +397,7 @@ app.get("/api/my-reflection-detail", (req, res) => {
 
 app.get("/api/my-ai-diagnosis", async (req, res) => {
   const studentId = Number(req.query.studentId);
+  const forceRefresh = String(req.query.forceRefresh || "false").toLowerCase() === "true";
 
   if (!Number.isInteger(studentId) || studentId <= 0) {
     return res.status(400).json({ message: "studentId가 필요합니다." });
@@ -397,9 +408,40 @@ app.get("/api/my-ai-diagnosis", async (req, res) => {
     return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다." });
   }
 
+  if (!forceRefresh) {
+    const saved = getLatestAiDiagnosis(studentId);
+    if (saved) {
+      return res.json(saved);
+    }
+  }
+
   const dashboard = getDashboard(300, studentId);
   const result = await buildStudentDiagnosis(student, dashboard.rows || []);
+
+  if (Number(result.meta?.attemptCount || 0) > 0) {
+    const saved = createAiDiagnosis(studentId, result);
+    return res.json(saved);
+  }
+
   return res.json(result);
+});
+
+app.get("/api/my-ai-diagnosis-history", (req, res) => {
+  const studentId = Number(req.query.studentId);
+
+  if (!Number.isInteger(studentId) || studentId <= 0) {
+    return res.status(400).json({ message: "studentId가 필요합니다." });
+  }
+
+  const student = getStudentById(studentId);
+  if (!student) {
+    return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다." });
+  }
+
+  const limit = Number(req.query.limit || 20);
+  const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 20;
+  const history = getAiDiagnosisHistory(studentId, safeLimit);
+  return res.json({ history });
 });
 
 app.get("/api/dashboard", (req, res) => {
@@ -481,6 +523,106 @@ app.post("/api/assignment-submissions", async (req, res) => {
     submission,
     evaluation
   });
+});
+
+app.post("/api/discussions", (req, res) => {
+  const { studentId, bookTitle, bookAuthor } = req.body || {};
+
+  const parsedStudentId = Number(studentId);
+  if (!Number.isInteger(parsedStudentId) || parsedStudentId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 학생 계정입니다." });
+  }
+
+  const student = getStudentById(parsedStudentId);
+  if (!student) {
+    return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다. 다시 로그인해 주세요." });
+  }
+
+  const trimmedTitle = String(bookTitle || "").trim();
+  if (!trimmedTitle) {
+    return res.status(400).json({ message: "토론할 책 제목을 입력해 주세요." });
+  }
+
+  const session = createDiscussionSession(parsedStudentId, trimmedTitle, bookAuthor);
+  return res.status(201).json({ message: "토론이 시작되었습니다.", session });
+});
+
+app.get("/api/discussions", (req, res) => {
+  const studentId = Number(req.query.studentId);
+  if (!Number.isInteger(studentId) || studentId <= 0) {
+    return res.status(400).json({ message: "studentId가 필요합니다." });
+  }
+
+  const student = getStudentById(studentId);
+  if (!student) {
+    return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다." });
+  }
+
+  return res.json({ sessions: getDiscussionSessionsByStudent(studentId) });
+});
+
+app.get("/api/discussions/:sessionId/messages", (req, res) => {
+  const studentId = Number(req.query.studentId);
+  const sessionId = Number(req.params.sessionId);
+
+  if (!Number.isInteger(studentId) || studentId <= 0) {
+    return res.status(400).json({ message: "studentId가 필요합니다." });
+  }
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 토론입니다." });
+  }
+
+  const session = getDiscussionSessionById(sessionId, studentId);
+  if (!session) {
+    return res.status(404).json({ message: "해당 토론을 찾을 수 없습니다." });
+  }
+
+  return res.json({ session, messages: getDiscussionMessages(sessionId) });
+});
+
+app.post("/api/discussions/:sessionId/messages", async (req, res) => {
+  const { studentId, message } = req.body || {};
+  const sessionId = Number(req.params.sessionId);
+  const parsedStudentId = Number(studentId);
+
+  if (!Number.isInteger(parsedStudentId) || parsedStudentId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 학생 계정입니다." });
+  }
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    return res.status(400).json({ message: "유효하지 않은 토론입니다." });
+  }
+
+  const trimmedMessage = String(message || "").trim();
+  if (!trimmedMessage) {
+    return res.status(400).json({ message: "메시지를 입력해 주세요." });
+  }
+  if (trimmedMessage.length > 1000) {
+    return res.status(400).json({ message: "메시지는 1000자 이하로 입력해 주세요." });
+  }
+
+  const student = getStudentById(parsedStudentId);
+  if (!student) {
+    return res.status(404).json({ message: "학생 계정을 찾을 수 없습니다." });
+  }
+
+  const session = getDiscussionSessionById(sessionId, parsedStudentId);
+  if (!session) {
+    return res.status(404).json({ message: "해당 토론을 찾을 수 없습니다." });
+  }
+
+  const userMessage = addDiscussionMessage(sessionId, "user", trimmedMessage);
+  const history = getDiscussionMessages(sessionId);
+
+  const result = await chatDiscussionReply({
+    bookTitle: session.bookTitle,
+    bookAuthor: session.bookAuthor,
+    grade: student.grade,
+    history
+  });
+
+  const assistantMessage = addDiscussionMessage(sessionId, "assistant", result.reply);
+
+  return res.status(201).json({ userMessage, assistantMessage });
 });
 
 function startServer(port) {

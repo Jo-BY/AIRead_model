@@ -1,5 +1,5 @@
 // system + user 메시지 조립. 학생 입력은 태그로 감싸 "데이터"로만 전달(프롬프트 인젝션 방어).
-const { buildEvaluationSystemPrompt, buildDiagnosisSystemPrompt, PROMPT_VERSION } = require("./systemPrompt");
+const { buildEvaluationSystemPrompt, buildDiagnosisSystemPrompt, buildDiscussionSystemPrompt, PROMPT_VERSION } = require("./systemPrompt");
 
 function buildEvaluationMessages({ reflectionText, bookTitle, bookAuthor, gradeBand, rubric, curriculum, repairNote }) {
   const systemPrompt = buildEvaluationSystemPrompt({ gradeBand, rubric, curriculum });
@@ -91,4 +91,21 @@ function buildDiagnosisMessages({
   ];
 }
 
-module.exports = { PROMPT_VERSION, buildEvaluationMessages, buildDiagnosisMessages };
+function buildDiscussionMessages({ bookTitle, bookAuthor, gradeBand, history, repairNote }) {
+  const systemPrompt = buildDiscussionSystemPrompt({ gradeBand, bookTitle, bookAuthor });
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map((item) => ({ role: item.role, content: item.content }))
+  ];
+
+  if (repairNote) {
+    messages.push({
+      role: "system",
+      content: `[이전 응답 오류 - 반드시 수정하세요] ${repairNote} 반드시 {"reply": "..."} 형식의 JSON 객체 하나만 출력하고, reply 안에는 학생에게 보여줄 자연스러운 대화 문장만 담으세요.`
+    });
+  }
+
+  return messages;
+}
+
+module.exports = { PROMPT_VERSION, buildEvaluationMessages, buildDiagnosisMessages, buildDiscussionMessages };

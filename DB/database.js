@@ -120,6 +120,49 @@ function initDatabase() {
       reason TEXT,
       source TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS discussion_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      book_title TEXT NOT NULL,
+      book_author TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(student_id) REFERENCES student_accounts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS discussion_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(session_id) REFERENCES discussion_sessions(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_diagnoses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      school TEXT,
+      grade INTEGER,
+      class_name TEXT,
+      headline TEXT,
+      overview TEXT,
+      timeline_insights_json TEXT,
+      indicator_insights_json TEXT,
+      action_plan_json TEXT,
+      textbook_recommendations_json TEXT,
+      book_recommendations_json TEXT,
+      weakest_indicator TEXT,
+      strongest_indicator TEXT,
+      confidence TEXT,
+      needs_review INTEGER NOT NULL DEFAULT 0,
+      model_version TEXT,
+      prompt_version TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(student_id) REFERENCES student_accounts(id)
+    );
   `);
 
   const columns = db.prepare("PRAGMA table_info(student_accounts)").all();
@@ -144,6 +187,37 @@ function initDatabase() {
     ensureColumn(table, "confidence", "TEXT");
     ensureColumn(table, "needs_review", "INTEGER NOT NULL DEFAULT 0");
   }
+
+  // 대시보드에서 "본인/교사" 제출 구분을 표시하기 위한 과제 연결 컬럼.
+  ensureColumn("book_reflections", "assignment_id", "INTEGER REFERENCES assignments(id)");
+
+  // 컬럼 추가 이전에 저장된 과제 제출 건은 (student_id, 점수, 제출 시각, 책 제목)이
+  // 정확히 일치하는 assignment_submissions 건으로만 역추적해 채워 넣는다.
+  db.exec(`
+    UPDATE book_reflections
+    SET assignment_id = (
+      SELECT sub.assignment_id
+      FROM assignment_submissions sub
+      JOIN literacy_evaluations e ON e.reflection_id = book_reflections.id
+      JOIN assignments a ON a.id = sub.assignment_id
+      WHERE sub.student_id = book_reflections.student_id
+        AND sub.total_score = e.total_score
+        AND sub.created_at = book_reflections.created_at
+        AND a.book_title = book_reflections.book_title
+      LIMIT 1
+    )
+    WHERE assignment_id IS NULL
+      AND EXISTS (
+        SELECT 1
+        FROM assignment_submissions sub
+        JOIN literacy_evaluations e ON e.reflection_id = book_reflections.id
+        JOIN assignments a ON a.id = sub.assignment_id
+        WHERE sub.student_id = book_reflections.student_id
+          AND sub.total_score = e.total_score
+          AND sub.created_at = book_reflections.created_at
+          AND a.book_title = book_reflections.book_title
+      )
+  `);
 
   // Merge legacy duplicates so one student key maps to one account consistently.
   const duplicates = db
@@ -357,15 +431,16 @@ function createAssignmentSubmission(studentId, assignmentId, answerText, evaluat
 
   const tx = db.transaction(() => {
     const reflectionStmt = db.prepare(`
-      INSERT INTO book_reflections (student_id, book_title, book_author, reflection_text)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO book_reflections (student_id, book_title, book_author, reflection_text, assignment_id)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
     const reflectionResult = reflectionStmt.run(
       studentId,
       assignment.bookTitle,
       assignment.bookAuthor || null,
-      String(answerText || "").trim()
+      String(answerText || "").trim(),
+      assignmentId
     );
 
     const evaluationStmt = db.prepare(`
@@ -476,6 +551,8 @@ function getDashboard(limit = 100, studentId = null) {
         r.book_author,
         r.reflection_text,
         r.created_at AS submitted_at,
+        r.assignment_id,
+        CASE WHEN r.assignment_id IS NOT NULL THEN 'teacher' ELSE 'self' END AS source_type,
         e.total_score,
         e.comprehension,
         e.inference,
@@ -610,6 +687,93 @@ function getStudentReflectionDetail(studentId, reflectionId) {
   };
 }
 
+function createDiscussionSession(studentId, bookTitle, bookAuthor) {
+  const result = db
+    .prepare(
+      `
+      INSERT INTO discussion_sessions (student_id, book_title, book_author)
+      VALUES (?, ?, ?)
+    `
+    )
+    .run(studentId, String(bookTitle).trim(), bookAuthor ? String(bookAuthor).trim() : null);
+
+  return getDiscussionSessionById(Number(result.lastInsertRowid), studentId);
+}
+
+function getDiscussionSessionById(sessionId, studentId) {
+  return db
+    .prepare(
+      `
+      SELECT id, student_id AS studentId, book_title AS bookTitle, book_author AS bookAuthor,
+             created_at AS createdAt, updated_at AS updatedAt
+      FROM discussion_sessions
+      WHERE id = ? AND student_id = ?
+    `
+    )
+    .get(sessionId, studentId);
+}
+
+function getDiscussionSessionsByStudent(studentId) {
+  return db
+    .prepare(
+      `
+      SELECT
+        ds.id, ds.book_title AS bookTitle, ds.book_author AS bookAuthor,
+        ds.created_at AS createdAt, ds.updated_at AS updatedAt,
+        (SELECT COUNT(*) FROM discussion_messages dm WHERE dm.session_id = ds.id) AS messageCount,
+        (
+          SELECT dm.content FROM discussion_messages dm
+          WHERE dm.session_id = ds.id
+          ORDER BY dm.id DESC LIMIT 1
+        ) AS lastMessage
+      FROM discussion_sessions ds
+      WHERE ds.student_id = ?
+      ORDER BY ds.updated_at DESC
+    `
+    )
+    .all(studentId);
+}
+
+function getDiscussionMessages(sessionId) {
+  return db
+    .prepare(
+      `
+      SELECT id, session_id AS sessionId, role, content, created_at AS createdAt
+      FROM discussion_messages
+      WHERE session_id = ?
+      ORDER BY id ASC
+    `
+    )
+    .all(sessionId);
+}
+
+function addDiscussionMessage(sessionId, role, content) {
+  const tx = db.transaction(() => {
+    const result = db
+      .prepare(
+        `
+        INSERT INTO discussion_messages (session_id, role, content)
+        VALUES (?, ?, ?)
+      `
+      )
+      .run(sessionId, role, content);
+
+    db.prepare("UPDATE discussion_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(sessionId);
+
+    return db
+      .prepare(
+        `
+        SELECT id, session_id AS sessionId, role, content, created_at AS createdAt
+        FROM discussion_messages
+        WHERE id = ?
+      `
+      )
+      .get(result.lastInsertRowid);
+  });
+
+  return tx();
+}
+
 function replaceReferenceTable(table, rows, mapToColumns) {
   const insertTx = db.transaction((items) => {
     db.prepare(`DELETE FROM ${table}`).run();
@@ -738,6 +902,94 @@ function getRecommendedBooks(gradeBand, indicatorKey) {
     .all(gradeBand, indicatorKey);
 }
 
+function mapAiDiagnosisRow(row) {
+  return {
+    diagnosis: {
+      headline: row.headline,
+      overview: row.overview,
+      timelineInsights: JSON.parse(row.timeline_insights_json || "[]"),
+      indicatorInsights: JSON.parse(row.indicator_insights_json || "[]"),
+      actionPlan: JSON.parse(row.action_plan_json || "[]")
+    },
+    recommendations: {
+      textbooks: JSON.parse(row.textbook_recommendations_json || "[]"),
+      books: JSON.parse(row.book_recommendations_json || "[]")
+    },
+    meta: {
+      id: row.id,
+      attemptCount: row.attempt_count,
+      school: row.school,
+      grade: row.grade,
+      className: row.class_name,
+      weakestIndicator: row.weakest_indicator,
+      strongestIndicator: row.strongest_indicator,
+      confidence: row.confidence,
+      needsReview: Boolean(row.needs_review),
+      modelVersion: row.model_version,
+      promptVersion: row.prompt_version,
+      createdAt: row.created_at
+    }
+  };
+}
+
+function createAiDiagnosis(studentId, result) {
+  const diagnosis = result.diagnosis || {};
+  const recommendations = result.recommendations || {};
+  const meta = result.meta || {};
+
+  const info = db
+    .prepare(
+      `
+      INSERT INTO ai_diagnoses (
+        student_id, attempt_count, school, grade, class_name,
+        headline, overview, timeline_insights_json, indicator_insights_json, action_plan_json,
+        textbook_recommendations_json, book_recommendations_json,
+        weakest_indicator, strongest_indicator, confidence, needs_review, model_version, prompt_version
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+    .run(
+      studentId,
+      meta.attemptCount || 0,
+      meta.school || null,
+      meta.grade || null,
+      meta.className || null,
+      diagnosis.headline || null,
+      diagnosis.overview || null,
+      JSON.stringify(diagnosis.timelineInsights || []),
+      JSON.stringify(diagnosis.indicatorInsights || []),
+      JSON.stringify(diagnosis.actionPlan || []),
+      JSON.stringify(recommendations.textbooks || []),
+      JSON.stringify(recommendations.books || []),
+      meta.weakestIndicator || null,
+      meta.strongestIndicator || null,
+      meta.confidence || null,
+      meta.needsReview ? 1 : 0,
+      meta.modelVersion || null,
+      meta.promptVersion || null
+    );
+
+  return getAiDiagnosisById(info.lastInsertRowid);
+}
+
+function getAiDiagnosisById(id) {
+  const row = db.prepare("SELECT * FROM ai_diagnoses WHERE id = ?").get(id);
+  return row ? mapAiDiagnosisRow(row) : null;
+}
+
+function getLatestAiDiagnosis(studentId) {
+  const row = db.prepare("SELECT * FROM ai_diagnoses WHERE student_id = ? ORDER BY id DESC LIMIT 1").get(studentId);
+  return row ? mapAiDiagnosisRow(row) : null;
+}
+
+function getAiDiagnosisHistory(studentId, limit = 20) {
+  const rows = db
+    .prepare("SELECT * FROM ai_diagnoses WHERE student_id = ? ORDER BY id DESC LIMIT ?")
+    .all(studentId, limit);
+  return rows.map(mapAiDiagnosisRow);
+}
+
 module.exports = {
   initDatabase,
   findStudentByIdentity,
@@ -750,6 +1002,11 @@ module.exports = {
   createAssignmentSubmission,
   getDashboard,
   getStudentReflectionDetail,
+  createDiscussionSession,
+  getDiscussionSessionById,
+  getDiscussionSessionsByStudent,
+  getDiscussionMessages,
+  addDiscussionMessage,
   seedRubric,
   seedCurriculumStandards,
   seedRecommendedTextbooks,
@@ -757,5 +1014,8 @@ module.exports = {
   getRubricByGradeBand,
   getCurriculumStandardsByGradeBand,
   getRecommendedTextbooks,
-  getRecommendedBooks
+  getRecommendedBooks,
+  createAiDiagnosis,
+  getLatestAiDiagnosis,
+  getAiDiagnosisHistory
 };

@@ -1,20 +1,23 @@
 // LLM 기반 평가/진단 오케스트레이션: 검색(retrieval) -> 프롬프트 -> vLLM 호출 -> 검증 -> 폴백.
 const { INDICATORS, evaluateReflection } = require("../evaluator");
 const { getRubricContext, getCurriculumContext, getRecommendationCandidates } = require("./referenceRetriever");
-const { buildEvaluationMessages, buildDiagnosisMessages, PROMPT_VERSION } = require("./promptBuilder");
+const { buildEvaluationMessages, buildDiagnosisMessages, buildDiscussionMessages, PROMPT_VERSION } = require("./promptBuilder");
 const {
   evaluationSchema,
   diagnosisSchema,
+  discussionSchema,
   validateEvaluation,
   validateDiagnosis,
+  validateDiscussion,
   errorsToText
 } = require("./responseSchema");
-const { chatCompletion, checkHealth, LLM_MODEL_NAME } = require("./vllmClient");
-const { snakeToCamelIndicator } = require("./shared");
+const { chatCompletion, checkHealth, LLM_MODEL_NAME } = require("./llmClient");
+const { snakeToCamelIndicator, toGradeBand, GRADE_BAND_LABEL } = require("./shared");
 
 const LLM_ENABLED = String(process.env.LLM_ENABLED ?? "true").toLowerCase() !== "false";
 const LLM_FALLBACK_TO_RULE = String(process.env.LLM_FALLBACK_TO_RULE ?? "true").toLowerCase() !== "false";
 const MAX_ATTEMPTS = 3;
+const MAX_DISCUSSION_HISTORY = 20;
 
 function extractJson(content) {
   const trimmed = String(content || "").trim();
@@ -251,6 +254,59 @@ async function diagnoseWithLLM({ student, attempts, weakest, strongest, mostImpr
   throw new Error(`LLM 진단 실패: ${lastError}`);
 }
 
+function discussionFallbackReply(reason) {
+  return {
+    reply: "지금은 AI와 연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.",
+    modelVersion: "template-fallback",
+    promptVersion: PROMPT_VERSION,
+    fallbackReason: reason || "unknown"
+  };
+}
+
+async function chatDiscussionReply({ bookTitle, bookAuthor, grade, history }) {
+  if (!LLM_ENABLED) {
+    return discussionFallbackReply("LLM_ENABLED=false");
+  }
+
+  const gradeBand = GRADE_BAND_LABEL[toGradeBand(grade)];
+  const trimmedHistory = (history || []).slice(-MAX_DISCUSSION_HISTORY);
+
+  let lastError = null;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const messages = buildDiscussionMessages({
+        bookTitle,
+        bookAuthor,
+        gradeBand,
+        history: trimmedHistory,
+        repairNote: lastError
+      });
+
+      const { content } = await chatCompletion({ messages, guidedJson: discussionSchema, temperature: 0.6, maxTokens: 500 });
+      const parsed = extractJson(content);
+
+      if (!validateDiscussion(parsed)) {
+        lastError = `스키마 검증 실패: ${errorsToText(validateDiscussion)}`;
+        continue;
+      }
+
+      return {
+        reply: parsed.reply,
+        modelVersion: LLM_MODEL_NAME,
+        promptVersion: PROMPT_VERSION
+      };
+    } catch (err) {
+      lastError = err.message;
+    }
+  }
+
+  if (LLM_FALLBACK_TO_RULE) {
+    return discussionFallbackReply(lastError);
+  }
+
+  throw new Error(`AI 독서토론 응답 실패: ${lastError}`);
+}
+
 async function checkLlmHealth() {
   if (!LLM_ENABLED) {
     return { enabled: false, reachable: false };
@@ -263,5 +319,6 @@ module.exports = {
   PROMPT_VERSION,
   evaluateWithLLM,
   diagnoseWithLLM,
+  chatDiscussionReply,
   checkLlmHealth
 };

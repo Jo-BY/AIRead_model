@@ -70,6 +70,17 @@ const diagnosisSchema = {
 const validateEvaluation = ajv.compile(evaluationSchema);
 const validateDiagnosis = ajv.compile(diagnosisSchema);
 
+const discussionSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply"],
+  properties: {
+    reply: { type: "string", minLength: 1, maxLength: 800 }
+  }
+};
+
+const validateDiscussion = ajv.compile(discussionSchema);
+
 function errorsToText(validateFn) {
   return ajv.errorsText(validateFn.errors, { separator: "; " });
 }
@@ -77,7 +88,9 @@ function errorsToText(validateFn) {
 module.exports = {
   evaluationSchema,
   diagnosisSchema,
+  discussionSchema,
   validateEvaluation,
   validateDiagnosis,
+  validateDiscussion,
   errorsToText
 };

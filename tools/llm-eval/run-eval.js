@@ -7,7 +7,7 @@ const { evaluateWithLLM } = require("../../WAS/services/llm/llmLiteracyService")
 const { getRecommendationCandidates } = require("../../WAS/services/llm/referenceRetriever");
 const { buildDiagnosisMessages } = require("../../WAS/services/llm/promptBuilder");
 const { diagnosisSchema, validateDiagnosis } = require("../../WAS/services/llm/responseSchema");
-const { chatCompletion } = require("../../WAS/services/llm/vllmClient");
+const { chatCompletion } = require("../../WAS/services/llm/llmClient");
 
 const INDICATOR_KEYS = ["comprehension", "inference", "criticalThinking", "expression", "vocabGrammar"];
 const MAE_THRESHOLD = 0.5;

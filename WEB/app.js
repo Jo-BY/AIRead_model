@@ -1,13 +1,19 @@
 const logoutButton = document.getElementById("logoutButton");
 const loginStatusEl = document.getElementById("loginStatus");
 const form = document.getElementById("submissionForm");
+const evaluationProgressOverlayEl = document.getElementById("evaluationProgressOverlay");
+const evaluationProgressTitleEl = document.getElementById("evaluationProgressTitle");
+const evaluationProgressFillEl = document.getElementById("evaluationProgressFill");
+const evaluationProgressPercentEl = document.getElementById("evaluationProgressPercent");
+const evaluationProgressMessageEl = document.getElementById("evaluationProgressMessage");
 const totalScoreEl = document.getElementById("totalScore");
 const evaluationMetaBadgeEl = document.getElementById("evaluationMetaBadge");
 const scoreRowsEl = document.getElementById("scoreRows");
 const indicatorListEl = document.getElementById("indicatorList");
 const dashboardBodyEl = document.getElementById("dashboardBody");
 const statsEl = document.getElementById("stats");
-const refreshButton = document.getElementById("refreshButton");
+const dashboardSearchInputEl = document.getElementById("dashboardSearchInput");
+const dashboardSourceFilterEl = document.getElementById("dashboardSourceFilter");
 const timelineRefreshButton = document.getElementById("timelineRefreshButton");
 const timelineSummaryEl = document.getElementById("timelineSummary");
 const timelineEmptyEl = document.getElementById("timelineEmpty");
@@ -16,6 +22,7 @@ const timelineTotalChartEl = document.getElementById("timelineTotalChart");
 const timelineIndicatorChartEl = document.getElementById("timelineIndicatorChart");
 const timelineIndicatorLegendEl = document.getElementById("timelineIndicatorLegend");
 const aiDiagnosisRefreshButton = document.getElementById("aiDiagnosisRefreshButton");
+const aiDiagnosisHistoryListEl = document.getElementById("aiDiagnosisHistoryList");
 const aiDiagnosisMetaEl = document.getElementById("aiDiagnosisMeta");
 const aiDiagnosisEmptyEl = document.getElementById("aiDiagnosisEmpty");
 const aiDiagnosisPanelEl = document.getElementById("aiDiagnosisPanel");
@@ -41,14 +48,20 @@ const studentRadarLegendEl = document.getElementById("studentRadarLegend");
 const studentDetailReflectionTextEl = document.getElementById("studentDetailReflectionText");
 const teacherStatsEl = document.getElementById("teacherStats");
 const teacherDashboardBodyEl = document.getElementById("teacherDashboardBody");
-const teacherRefreshButton = document.getElementById("teacherRefreshButton");
 const teacherSearchInput = document.getElementById("teacherSearchInput");
 const teacherGradeFilter = document.getElementById("teacherGradeFilter");
 const teacherClassFilter = document.getElementById("teacherClassFilter");
 const teacherFilterResetButton = document.getElementById("teacherFilterResetButton");
+const teacherTrendSchoolInput = document.getElementById("teacherTrendSchoolInput");
+const teacherTrendNameInput = document.getElementById("teacherTrendNameInput");
+const teacherTrendClassFilter = document.getElementById("teacherTrendClassFilter");
+const teacherTrendMinScoreInput = document.getElementById("teacherTrendMinScoreInput");
+const teacherTrendMaxScoreInput = document.getElementById("teacherTrendMaxScoreInput");
+const teacherTrendFilterResetButton = document.getElementById("teacherTrendFilterResetButton");
 const teacherOverviewSummaryEl = document.getElementById("teacherOverviewSummary");
 const teacherComparisonChartEl = document.getElementById("teacherComparisonChart");
 const teacherStudentTrendListEl = document.getElementById("teacherStudentTrendList");
+const teacherStudentTrendPaginationEl = document.getElementById("teacherStudentTrendPagination");
 const teacherDetailModalEl = document.getElementById("teacherDetailModal");
 const teacherDetailCardEl = document.getElementById("teacherDetailCard");
 const teacherDetailDragBarEl = document.getElementById("teacherDetailDragBar");
@@ -56,22 +69,67 @@ const teacherResizeHandleEl = document.getElementById("teacherResizeHandle");
 const teacherDetailCloseButton = document.getElementById("teacherDetailCloseButton");
 const teacherDetailTitleEl = document.getElementById("teacherDetailTitle");
 const teacherDetailBodyEl = document.getElementById("teacherDetailBody");
+const teacherHistoryDetailEmptyEl = document.getElementById("teacherHistoryDetailEmpty");
+const teacherHistoryDetailContentEl = document.getElementById("teacherHistoryDetailContent");
+const teacherHistoryDetailNameEl = document.getElementById("teacherHistoryDetailName");
+const teacherHistoryTabButtons = document.querySelectorAll("[data-history-tab]");
+const teacherHistoryTabContents = document.querySelectorAll("[data-history-tab-content]");
+const teacherHistoryBookListEl = document.getElementById("teacherHistoryBookList");
+const teacherHistoryTimelineSummaryEl = document.getElementById("teacherHistoryTimelineSummary");
+const teacherHistoryTimelineEmptyEl = document.getElementById("teacherHistoryTimelineEmpty");
+const teacherHistoryTimelineChartGroupEl = document.getElementById("teacherHistoryTimelineChartGroup");
+const teacherHistoryTotalChartEl = document.getElementById("teacherHistoryTotalChart");
+const teacherHistoryIndicatorChartEl = document.getElementById("teacherHistoryIndicatorChart");
+const teacherHistoryIndicatorLegendEl = document.getElementById("teacherHistoryIndicatorLegend");
+const teacherHistoryAiMetaEl = document.getElementById("teacherHistoryAiMeta");
+const teacherHistoryAiEmptyEl = document.getElementById("teacherHistoryAiEmpty");
+const teacherHistoryAiPanelEl = document.getElementById("teacherHistoryAiPanel");
+const teacherHistoryAiHeadlineEl = document.getElementById("teacherHistoryAiHeadline");
+const teacherHistoryAiConfidenceBadgeEl = document.getElementById("teacherHistoryAiConfidenceBadge");
+const teacherHistoryAiOverviewEl = document.getElementById("teacherHistoryAiOverview");
+const teacherHistoryAiTimelineListEl = document.getElementById("teacherHistoryAiTimelineList");
+const teacherHistoryAiIndicatorListEl = document.getElementById("teacherHistoryAiIndicatorList");
+const teacherHistoryAiTextbookListEl = document.getElementById("teacherHistoryAiTextbookList");
+const teacherHistoryAiBookListEl = document.getElementById("teacherHistoryAiBookList");
+const teacherHistoryAiActionPlanListEl = document.getElementById("teacherHistoryAiActionPlanList");
+const teacherHistoryAiHistoryListEl = document.getElementById("teacherHistoryAiHistoryList");
 const assignmentForm = document.getElementById("assignmentForm");
 const assignmentListEl = document.getElementById("assignmentList");
 const assignmentCheckRefreshButton = document.getElementById("assignmentCheckRefreshButton");
 const studentAssignmentListEl = document.getElementById("studentAssignmentList");
 const studentAssignmentDetailTitleEl = document.getElementById("studentAssignmentDetailTitle");
 const studentAssignmentDetailContentEl = document.getElementById("studentAssignmentDetailContent");
+const discussionNewButton = document.getElementById("discussionNewButton");
+const discussionListEl = document.getElementById("discussionList");
+const discussionStartFormEl = document.getElementById("discussionStartForm");
+const discussionBookTitleInputEl = document.getElementById("discussionBookTitleInput");
+const discussionBookAuthorInputEl = document.getElementById("discussionBookAuthorInput");
+const discussionStartButton = document.getElementById("discussionStartButton");
+const discussionChatPanelEl = document.getElementById("discussionChatPanel");
+const discussionChatTitleEl = document.getElementById("discussionChatTitle");
+const discussionChatAuthorEl = document.getElementById("discussionChatAuthor");
+const discussionMessagesEl = document.getElementById("discussionMessages");
+const discussionChatFormEl = document.getElementById("discussionChatForm");
+const discussionChatInputEl = document.getElementById("discussionChatInput");
+const discussionSendButton = document.getElementById("discussionSendButton");
 const gnbButtons = Array.from(document.querySelectorAll(".gnb-btn"));
-const dashboardQuickChips = Array.from(document.querySelectorAll(".dashboard-chip"));
+const dashboardQuickChips = Array.from(document.querySelectorAll("#view-dashboard .dashboard-chip"));
+const teacherPanelChips = Array.from(document.querySelectorAll("#view-teacher-dashboard .dashboard-chip"));
 
 const SESSION_STORAGE_KEY = "airead-auth-session";
 let currentSession = null;
 let teacherGroupedRows = [];
 let teacherFilteredRows = [];
+let teacherTrendCurrentPage = 1;
+const TEACHER_TREND_PAGE_SIZE = 10;
 let myDashboardRows = [];
 let studentAssignments = [];
 let selectedAssignmentId = null;
+let discussionSessions = [];
+let activeDiscussionSessionId = null;
+let selectedTeacherHistoryStudentId = null;
+let activeTeacherHistoryTab = "books";
+const teacherHistoryAiCache = new Map();
 const teacherModalState = {
   drag: null,
   resize: null,
@@ -342,6 +400,205 @@ async function loadAssignmentsForStudent() {
   renderStudentAssignmentDetail(selected || studentAssignments[0]);
 }
 
+function renderDiscussionList() {
+  discussionListEl.innerHTML = "";
+
+  if (!discussionSessions.length) {
+    const li = document.createElement("li");
+    li.textContent = "💬 아직 시작한 토론이 없어요.";
+    discussionListEl.appendChild(li);
+    return;
+  }
+
+  discussionSessions.forEach((session) => {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    if (Number(session.id) === Number(activeDiscussionSessionId)) {
+      button.classList.add("active");
+    }
+
+    const titleEl = document.createElement("strong");
+    titleEl.textContent = session.bookTitle;
+    const metaEl = document.createElement("span");
+    const when = session.updatedAt ? new Date(session.updatedAt).toLocaleString("ko-KR") : "";
+    metaEl.textContent = `${session.bookAuthor || "저자 미기재"} · ${when}`;
+
+    button.appendChild(titleEl);
+    button.appendChild(metaEl);
+    button.addEventListener("click", () => {
+      openDiscussionSession(session.id).catch((error) => alert(error.message));
+    });
+
+    li.appendChild(button);
+    discussionListEl.appendChild(li);
+  });
+}
+
+async function loadDiscussionSessions() {
+  const currentStudent = getCurrentStudent();
+  if (!currentStudent) {
+    return;
+  }
+
+  const data = await fetchJSON(`/api/discussions?studentId=${currentStudent.id}`);
+  discussionSessions = data.sessions || [];
+  renderDiscussionList();
+}
+
+function showDiscussionStartForm() {
+  activeDiscussionSessionId = null;
+  discussionStartFormEl.hidden = false;
+  discussionChatPanelEl.hidden = true;
+  discussionBookTitleInputEl.value = "";
+  discussionBookAuthorInputEl.value = "";
+  renderDiscussionList();
+}
+
+function createDiscussionMessageBubble(message) {
+  const wrap = document.createElement("div");
+  wrap.className = `discussion-message discussion-message-${message.role === "user" ? "user" : "assistant"}`;
+  const bubble = document.createElement("div");
+  bubble.className = "discussion-message-bubble";
+  bubble.textContent = message.content;
+  wrap.appendChild(bubble);
+  return wrap;
+}
+
+function renderDiscussionMessages(messages) {
+  discussionMessagesEl.innerHTML = "";
+
+  if (!messages.length) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "discussion-empty-hint";
+    emptyEl.textContent = "책에 대한 생각이나 궁금한 점을 자유롭게 이야기해 보세요!";
+    discussionMessagesEl.appendChild(emptyEl);
+    return;
+  }
+
+  messages.forEach((message) => {
+    discussionMessagesEl.appendChild(createDiscussionMessageBubble(message));
+  });
+  discussionMessagesEl.scrollTop = discussionMessagesEl.scrollHeight;
+}
+
+function setDiscussionTypingIndicator(visible) {
+  let indicatorEl = document.getElementById("discussionTypingIndicator");
+
+  if (visible) {
+    if (!indicatorEl) {
+      indicatorEl = document.createElement("div");
+      indicatorEl.id = "discussionTypingIndicator";
+      indicatorEl.className = "discussion-message discussion-message-assistant";
+
+      const bubble = document.createElement("div");
+      bubble.className = "discussion-message-bubble discussion-typing";
+      bubble.appendChild(document.createElement("span"));
+      bubble.appendChild(document.createElement("span"));
+      bubble.appendChild(document.createElement("span"));
+
+      indicatorEl.appendChild(bubble);
+      discussionMessagesEl.appendChild(indicatorEl);
+      discussionMessagesEl.scrollTop = discussionMessagesEl.scrollHeight;
+    }
+    return;
+  }
+
+  if (indicatorEl) {
+    indicatorEl.remove();
+  }
+}
+
+async function openDiscussionSession(sessionId) {
+  const currentStudent = getCurrentStudent();
+  if (!currentStudent) {
+    return;
+  }
+
+  const data = await fetchJSON(`/api/discussions/${sessionId}/messages?studentId=${currentStudent.id}`);
+  activeDiscussionSessionId = Number(sessionId);
+  discussionStartFormEl.hidden = true;
+  discussionChatPanelEl.hidden = false;
+  discussionChatTitleEl.textContent = data.session.bookTitle;
+  discussionChatAuthorEl.textContent = data.session.bookAuthor || "저자 미기재";
+  renderDiscussionMessages(data.messages || []);
+  renderDiscussionList();
+  discussionChatInputEl.focus();
+}
+
+async function startNewDiscussion() {
+  const currentStudent = getCurrentStudent();
+  if (!currentStudent) {
+    alert("로그인된 학생 정보가 없습니다.");
+    return;
+  }
+
+  const bookTitle = discussionBookTitleInputEl.value.trim();
+  const bookAuthor = discussionBookAuthorInputEl.value.trim();
+
+  if (!bookTitle) {
+    alert("토론할 책 제목을 입력해 주세요.");
+    return;
+  }
+
+  discussionStartButton.disabled = true;
+  try {
+    const result = await fetchJSON("/api/discussions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: currentStudent.id, bookTitle, bookAuthor })
+    });
+
+    discussionSessions.unshift(result.session);
+    await openDiscussionSession(result.session.id);
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    discussionStartButton.disabled = false;
+  }
+}
+
+async function sendDiscussionMessage() {
+  const currentStudent = getCurrentStudent();
+  const message = discussionChatInputEl.value.trim();
+
+  if (!currentStudent || !activeDiscussionSessionId || !message) {
+    return;
+  }
+
+  discussionChatInputEl.value = "";
+  discussionMessagesEl.appendChild(createDiscussionMessageBubble({ role: "user", content: message }));
+  discussionMessagesEl.scrollTop = discussionMessagesEl.scrollHeight;
+  setDiscussionTypingIndicator(true);
+  discussionSendButton.disabled = true;
+
+  try {
+    const result = await fetchJSON(`/api/discussions/${activeDiscussionSessionId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: currentStudent.id, message })
+    });
+
+    setDiscussionTypingIndicator(false);
+    discussionMessagesEl.appendChild(createDiscussionMessageBubble(result.assistantMessage));
+    discussionMessagesEl.scrollTop = discussionMessagesEl.scrollHeight;
+
+    const session = discussionSessions.find((item) => Number(item.id) === Number(activeDiscussionSessionId));
+    if (session) {
+      session.updatedAt = result.assistantMessage.createdAt;
+      session.lastMessage = result.assistantMessage.content;
+      discussionSessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      renderDiscussionList();
+    }
+  } catch (error) {
+    setDiscussionTypingIndicator(false);
+    alert(error.message);
+  } finally {
+    discussionSendButton.disabled = false;
+    discussionChatInputEl.focus();
+  }
+}
+
 function renderTeacherComparisonChart() {
   const gradeGroups = new Map();
   const classGroups = new Map();
@@ -454,22 +711,103 @@ function renderTeacherOverviewSummary() {
   `;
 
   teacherStudentTrendListEl.innerHTML = "";
-  [...teacherGroupedRows]
-    .sort((a, b) => Number(b.avgScore || 0) - Number(a.avgScore || 0))
-    .slice(0, 6)
-    .forEach((group) => {
+  teacherTrendCurrentPage = 1;
+  renderTeacherStudentTrendList(getFilteredTeacherTrendRows());
+
+  renderTeacherComparisonChart();
+}
+
+function getFilteredTeacherTrendRows() {
+  const school = teacherTrendSchoolInput.value.trim().toLowerCase();
+  const name = teacherTrendNameInput.value.trim().toLowerCase();
+  const className = teacherTrendClassFilter.value;
+  const minScore = teacherTrendMinScoreInput.value === "" ? null : Number(teacherTrendMinScoreInput.value);
+  const maxScore = teacherTrendMaxScoreInput.value === "" ? null : Number(teacherTrendMaxScoreInput.value);
+
+  return teacherGroupedRows
+    .filter((group) => {
+      const matchesSchool = !school || String(group.school).toLowerCase().includes(school);
+      const matchesName = !name || String(group.name).toLowerCase().includes(name);
+      const matchesClass = !className || group.class_name === className;
+      const avgScore = Number(group.avgScore || 0);
+      const matchesMin = minScore === null || avgScore >= minScore;
+      const matchesMax = maxScore === null || avgScore <= maxScore;
+      return matchesSchool && matchesName && matchesClass && matchesMin && matchesMax;
+    })
+    .sort((a, b) => Number(b.avgScore || 0) - Number(a.avgScore || 0));
+}
+
+function buildStudentAverageBar(avgScore) {
+  const clamped = Math.max(0, Math.min(100, Number(avgScore) || 0));
+  return `
+    <div class="teacher-student-trend-bar-wrap">
+      <span class="teacher-student-trend-bar-scale">0</span>
+      <div class="teacher-student-trend-bar-track">
+        <div class="teacher-student-trend-bar-fill" style="width:${clamped}%"></div>
+      </div>
+      <span class="teacher-student-trend-bar-scale">100</span>
+    </div>
+  `;
+}
+
+function renderTeacherTrendPagination(totalItems) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / TEACHER_TREND_PAGE_SIZE));
+  teacherStudentTrendPaginationEl.innerHTML = "";
+
+  if (totalPages <= 1) {
+    return;
+  }
+
+  const createPageButton = (label, page, options = {}) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "teacher-trend-page-btn";
+    if (options.active) {
+      btn.classList.add("active");
+    }
+    btn.textContent = label;
+    btn.disabled = Boolean(options.disabled);
+    btn.addEventListener("click", () => {
+      teacherTrendCurrentPage = page;
+      renderTeacherStudentTrendList(getFilteredTeacherTrendRows());
+    });
+    return btn;
+  };
+
+  teacherStudentTrendPaginationEl.appendChild(
+    createPageButton("이전", teacherTrendCurrentPage - 1, { disabled: teacherTrendCurrentPage <= 1 })
+  );
+
+  for (let page = 1; page <= totalPages; page += 1) {
+    teacherStudentTrendPaginationEl.appendChild(createPageButton(String(page), page, { active: page === teacherTrendCurrentPage }));
+  }
+
+  teacherStudentTrendPaginationEl.appendChild(
+    createPageButton("다음", teacherTrendCurrentPage + 1, { disabled: teacherTrendCurrentPage >= totalPages })
+  );
+}
+
+function renderTeacherStudentTrendList(rows) {
+  teacherStudentTrendListEl.innerHTML = "";
+
+  if (!rows.length) {
+    teacherStudentTrendListEl.innerHTML = "<div class=\"teacher-overview-empty\">조건에 맞는 학생이 없습니다.</div>";
+    teacherStudentTrendPaginationEl.innerHTML = "";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / TEACHER_TREND_PAGE_SIZE));
+  teacherTrendCurrentPage = Math.min(Math.max(1, teacherTrendCurrentPage), totalPages);
+  const start = (teacherTrendCurrentPage - 1) * TEACHER_TREND_PAGE_SIZE;
+  const pageRows = rows.slice(start, start + TEACHER_TREND_PAGE_SIZE);
+
+  pageRows.forEach((group) => {
       const items = [...group.items].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
       const scores = items.map((item) => Number(item.total_score || 0));
       const first = scores[0] || 0;
       const last = scores[scores.length - 1] || 0;
       const delta = last - first;
       const trendText = delta > 0 ? `+${delta}점 상승` : delta < 0 ? `${delta}점 하락` : "유지";
-      const bars = scores
-        .map((value, index) => {
-          const height = Math.max(12, (value / 100) * 100);
-          return `<span class="student-trend-bar" style="height:${height}%" title="${index + 1}차 점수 ${value}점"></span>`;
-        })
-        .join("");
 
       const row = document.createElement("button");
       row.type = "button";
@@ -486,7 +824,7 @@ function renderTeacherOverviewSummary() {
             <em>${trendText}</em>
           </div>
         </div>
-        <div class="teacher-student-trend-bars" aria-label="학생 성장 추이">${bars}</div>
+        ${buildStudentAverageBar(group.avgScore)}
       `;
       row.addEventListener("click", () => {
         const selected = teacherGroupedRows.find((item) => Number(item.student_id) === Number(group.student_id));
@@ -495,9 +833,9 @@ function renderTeacherOverviewSummary() {
         }
       });
       teacherStudentTrendListEl.appendChild(row);
-    });
+  });
 
-  renderTeacherComparisonChart();
+  renderTeacherTrendPagination(rows.length);
 }
 
 function averageValues(values) {
@@ -513,6 +851,7 @@ function renderTeacherDashboard(data) {
   teacherGroupedRows = [];
   teacherFilteredRows = [];
   closeTeacherDetailModal();
+  resetTeacherHistoryDetail();
 
   const studentCount = data.stats.student_count || 0;
   const reflectionCount = data.stats.reflection_count || 0;
@@ -528,7 +867,7 @@ function renderTeacherDashboard(data) {
     teacherOverviewSummaryEl.innerHTML = "<div class=\"teacher-overview-empty\">아직 표시할 학생 데이터가 없습니다.</div>";
     teacherStudentTrendListEl.innerHTML = "";
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5">아직 저장된 전체 평가 히스토리가 없어요.</td>`;
+    tr.innerHTML = `<td colspan="2">아직 저장된 전체 평가 히스토리가 없어요.</td>`;
     teacherDashboardBodyEl.appendChild(tr);
     teacherDetailTitleEl.textContent = "학생 상세 히스토리";
     return;
@@ -578,6 +917,7 @@ function renderTeacherDashboard(data) {
 
   renderTeacherOverviewSummary();
   populateTeacherClassFilterOptions();
+  populateTeacherTrendClassFilterOptions();
   applyTeacherFiltersAndRender();
 }
 
@@ -612,6 +952,26 @@ function populateTeacherClassFilterOptions() {
   }
 }
 
+function populateTeacherTrendClassFilterOptions() {
+  const classSet = new Set();
+  teacherGroupedRows.forEach((row) => classSet.add(row.class_name));
+
+  const currentClass = teacherTrendClassFilter.value;
+  const sorted = Array.from(classSet).sort((a, b) => normalizeClassNumber(a) - normalizeClassNumber(b));
+
+  teacherTrendClassFilter.innerHTML = '<option value="">전체</option>';
+  sorted.forEach((className) => {
+    const opt = document.createElement("option");
+    opt.value = className;
+    opt.textContent = className;
+    teacherTrendClassFilter.appendChild(opt);
+  });
+
+  if (sorted.includes(currentClass)) {
+    teacherTrendClassFilter.value = currentClass;
+  }
+}
+
 function applyTeacherFiltersAndRender() {
   teacherDashboardBodyEl.innerHTML = "";
 
@@ -642,21 +1002,21 @@ function applyTeacherFiltersAndRender() {
 
   if (!teacherFilteredRows.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5">조건에 맞는 학생이 없어요.</td>`;
+    tr.innerHTML = `<td colspan="2">조건에 맞는 학생이 없어요.</td>`;
     teacherDashboardBodyEl.appendChild(tr);
     return;
   }
 
   teacherFilteredRows.forEach((group) => {
     const tr = document.createElement("tr");
-    const when = group.latestSubmittedAt ? new Date(group.latestSubmittedAt).toLocaleString("ko-KR") : "-";
+    tr.className = "teacher-history-row";
+    if (group.student_id === selectedTeacherHistoryStudentId) {
+      tr.classList.add("active");
+    }
 
     tr.innerHTML = `
       <td><button type="button" class="student-link" data-student-id="${group.student_id}">${group.name}</button> (${group.student_number}번)</td>
       <td>${group.school} ${group.grade}학년 ${group.class_name}</td>
-      <td>${group.count}건</td>
-      <td>${group.avgScore}점</td>
-      <td>${when}</td>
     `;
 
     teacherDashboardBodyEl.appendChild(tr);
@@ -667,40 +1027,199 @@ function applyTeacherFiltersAndRender() {
       const studentId = Number(btn.dataset.studentId);
       const selected = teacherGroupedRows.find((row) => row.student_id === studentId);
       if (selected) {
-        renderTeacherDetail(selected);
+        selectTeacherHistoryStudent(selected);
       }
     });
   });
 }
 
-function renderTeacherDetail(group) {
-  teacherDetailBodyEl.innerHTML = "";
+function buildSubmissionCard(item) {
+  const card = document.createElement("div");
+  card.className = "teacher-submission-card";
+  const when = new Date(item.submitted_at).toLocaleString("ko-KR");
+  card.innerHTML = `
+    <div class="teacher-submission-head">
+      <div>
+        <strong>${item.book_title}</strong>
+        <span>${item.book_author || "저자 미입력"} · ${when}</span>
+      </div>
+      <div class="score-badge"><span>${item.total_score}</span>점</div>
+    </div>
+    <div class="teacher-submission-indicators">
+      <span class="teacher-indicator-chip">내용이해 ${item.comprehension}/5</span>
+      <span class="teacher-indicator-chip">추론 ${item.inference}/5</span>
+      <span class="teacher-indicator-chip">비판 ${item.critical_thinking}/5</span>
+      <span class="teacher-indicator-chip">표현 ${item.expression}/5</span>
+      <span class="teacher-indicator-chip">어휘 ${item.vocab_grammar}/5</span>
+    </div>
+    <p class="teacher-submission-reflection">${item.reflection_text || ""}</p>
+    <div class="teacher-submission-toggle-row">
+      <button type="button" class="teacher-submission-toggle-btn">상세보기 ▾</button>
+    </div>
+  `;
 
+  const evidenceEl = document.createElement("div");
+  evidenceEl.className = "teacher-submission-evidence";
+  evidenceEl.hidden = true;
+  radarIndicators.forEach((indicator) => {
+    const value = Number(item[indicator.scoreKey] || 0);
+    const feedbackText = item.feedback?.[indicator.feedbackKey];
+    const evidenceText = item.evidence?.[indicator.feedbackKey];
+    evidenceEl.appendChild(createScoreRowElement(indicator.feedbackKey, value, feedbackText, evidenceText));
+  });
+  card.appendChild(evidenceEl);
+
+  const toggleBtn = card.querySelector(".teacher-submission-toggle-btn");
+  toggleBtn.addEventListener("click", () => {
+    const expanded = !evidenceEl.hidden;
+    evidenceEl.hidden = expanded;
+    toggleBtn.textContent = expanded ? "상세보기 ▾" : "접기 ▴";
+  });
+
+  return card;
+}
+
+function renderSubmissionCards(container, items) {
+  container.innerHTML = "";
+  if (!items || !items.length) {
+    container.innerHTML = "<div class=\"teacher-overview-empty\">아직 저장된 평가 기록이 없어요.</div>";
+    return;
+  }
+
+  items.forEach((item) => {
+    container.appendChild(buildSubmissionCard(item));
+  });
+}
+
+function renderTeacherDetail(group) {
   if (!group) {
     teacherDetailTitleEl.textContent = "학생 상세 히스토리";
+    teacherDetailBodyEl.innerHTML = "";
     return;
   }
 
   teacherDetailTitleEl.textContent = `${group.name} (${group.student_number}번) 상세 히스토리`;
+  renderSubmissionCards(teacherDetailBodyEl, group.items);
+  openTeacherDetailModal();
+}
 
-  group.items.forEach((item) => {
-    const tr = document.createElement("tr");
-    const when = new Date(item.submitted_at).toLocaleString("ko-KR");
-    tr.innerHTML = `
-      <td>${when}</td>
-      <td><strong>${item.book_title}</strong><br/>${item.book_author || ""}</td>
-      <td>${item.total_score}점</td>
-      <td>${item.comprehension}/5</td>
-      <td>${item.inference}/5</td>
-      <td>${item.critical_thinking}/5</td>
-      <td>${item.expression}/5</td>
-      <td>${item.vocab_grammar}/5</td>
-      <td class="reflection-text">${item.reflection_text || ""}</td>
-    `;
-    teacherDetailBodyEl.appendChild(tr);
+function resetTeacherHistoryDetail() {
+  selectedTeacherHistoryStudentId = null;
+  activeTeacherHistoryTab = "books";
+  teacherHistoryAiCache.clear();
+  teacherHistoryDetailContentEl.hidden = true;
+  teacherHistoryDetailEmptyEl.hidden = false;
+  teacherHistoryBookListEl.innerHTML = "";
+  teacherHistoryAiHistoryListEl.innerHTML = "";
+  teacherHistoryAiHeadlineEl.textContent = "AI 진단 결과";
+  teacherHistoryAiPanelEl.hidden = true;
+  teacherHistoryAiEmptyEl.hidden = true;
+
+  teacherHistoryTabButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.historyTab === "books");
+  });
+  teacherHistoryTabContents.forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.historyTabContent === "books");
+  });
+}
+
+function setActiveTeacherHistoryTab(tabName) {
+  activeTeacherHistoryTab = tabName;
+
+  teacherHistoryTabButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.historyTab === tabName);
+  });
+  teacherHistoryTabContents.forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.historyTabContent === tabName);
   });
 
-  openTeacherDetailModal();
+  if (tabName === "ai") {
+    const selected = teacherGroupedRows.find((row) => row.student_id === selectedTeacherHistoryStudentId);
+    if (selected) {
+      loadTeacherHistoryAiDiagnosis(selected);
+    }
+  }
+}
+
+function selectTeacherHistoryStudent(group) {
+  selectedTeacherHistoryStudentId = group.student_id;
+
+  teacherDashboardBodyEl.querySelectorAll(".teacher-history-row").forEach((row) => {
+    const btn = row.querySelector(".student-link");
+    row.classList.toggle("active", btn && Number(btn.dataset.studentId) === group.student_id);
+  });
+
+  teacherHistoryDetailEmptyEl.hidden = true;
+  teacherHistoryDetailContentEl.hidden = false;
+  teacherHistoryDetailNameEl.textContent = `${group.name} (${group.school} ${group.grade}학년 ${group.class_name} · ${group.student_number}번)`;
+
+  renderSubmissionCards(teacherHistoryBookListEl, group.items);
+  renderTimelineChartsInto(group.items, {
+    totalChartEl: teacherHistoryTotalChartEl,
+    indicatorChartEl: teacherHistoryIndicatorChartEl,
+    indicatorLegendEl: teacherHistoryIndicatorLegendEl,
+    summaryEl: teacherHistoryTimelineSummaryEl,
+    emptyEl: teacherHistoryTimelineEmptyEl,
+    chartGroupEl: teacherHistoryTimelineChartGroupEl,
+    emptyMessage: "이 학생의 평가 기록이 아직 없어요."
+  });
+
+  teacherHistoryAiPanelEl.hidden = true;
+  teacherHistoryAiEmptyEl.hidden = true;
+  setActiveTeacherHistoryTab(activeTeacherHistoryTab);
+}
+
+function renderTeacherHistoryAiResult(result, history) {
+  renderAiDiagnosisInto(result, {
+    metaEl: teacherHistoryAiMetaEl,
+    emptyEl: teacherHistoryAiEmptyEl,
+    panelEl: teacherHistoryAiPanelEl,
+    headlineEl: teacherHistoryAiHeadlineEl,
+    confidenceBadgeEl: teacherHistoryAiConfidenceBadgeEl,
+    overviewEl: teacherHistoryAiOverviewEl,
+    timelineListEl: teacherHistoryAiTimelineListEl,
+    indicatorListEl: teacherHistoryAiIndicatorListEl,
+    actionPlanListEl: teacherHistoryAiActionPlanListEl,
+    textbookListEl: teacherHistoryAiTextbookListEl,
+    bookListEl: teacherHistoryAiBookListEl
+  });
+  renderAiDiagnosisHistoryList(teacherHistoryAiHistoryListEl, history, result.meta ? result.meta.id ?? null : null, (entry) => {
+    renderTeacherHistoryAiResult(entry, history);
+  });
+}
+
+async function loadTeacherHistoryAiDiagnosis(group) {
+  if (teacherHistoryAiCache.has(group.student_id)) {
+    const cached = teacherHistoryAiCache.get(group.student_id);
+    renderTeacherHistoryAiResult(cached.latest, cached.history);
+    return;
+  }
+
+  teacherHistoryAiMetaEl.textContent = "불러오는 중...";
+  teacherHistoryAiPanelEl.hidden = true;
+  teacherHistoryAiEmptyEl.hidden = true;
+  teacherHistoryAiHistoryListEl.innerHTML = "";
+
+  try {
+    const [result, historyResult] = await Promise.all([
+      fetchJSON(`/api/my-ai-diagnosis?studentId=${group.student_id}`),
+      fetchJSON(`/api/my-ai-diagnosis-history?studentId=${group.student_id}`)
+    ]);
+    if (selectedTeacherHistoryStudentId !== group.student_id) {
+      return;
+    }
+
+    const history = historyResult.history || [];
+    teacherHistoryAiCache.set(group.student_id, { latest: result, history });
+    renderTeacherHistoryAiResult(result, history);
+  } catch (error) {
+    if (selectedTeacherHistoryStudentId !== group.student_id) {
+      return;
+    }
+    teacherHistoryAiMetaEl.textContent = "AI 진단 결과를 불러오지 못했습니다.";
+    teacherHistoryAiEmptyEl.hidden = false;
+    teacherHistoryAiPanelEl.hidden = true;
+  }
 }
 
 function openTeacherDetailModal() {
@@ -954,15 +1473,19 @@ function drawTimelineSeries(svg, geometry, rows, options) {
   });
 }
 
-function renderTimelineLegend() {
-  timelineIndicatorLegendEl.innerHTML = "";
+function renderTimelineLegendInto(legendEl) {
+  legendEl.innerHTML = "";
 
   timelineIndicatorConfig.forEach((item) => {
     const legendItem = document.createElement("span");
     legendItem.className = "timeline-legend-item";
     legendItem.innerHTML = `<span class="timeline-legend-dot" style="background:${item.color}"></span>${item.label}`;
-    timelineIndicatorLegendEl.appendChild(legendItem);
+    legendEl.appendChild(legendItem);
   });
+}
+
+function renderTimelineLegend() {
+  renderTimelineLegendInto(timelineIndicatorLegendEl);
 }
 
 function renderSimpleList(listEl, items) {
@@ -1001,26 +1524,80 @@ function renderRecommendationList(listEl, items, type) {
   });
 }
 
-function renderAiDiagnosis(result) {
+function renderAiDiagnosisInto(result, els) {
   const meta = result.meta || {};
   const diagnosis = result.diagnosis || {};
   const recommendations = result.recommendations || {};
 
-  aiDiagnosisMetaEl.textContent = `${meta.school || "-"} ${meta.grade || "-"}학년 ${meta.className || "-"} · 분석 기록 ${meta.attemptCount || 0}건`;
+  const createdAtText = meta.createdAt ? ` · 생성일: ${new Date(meta.createdAt).toLocaleString("ko-KR")}` : "";
+  els.metaEl.textContent = `${meta.school || "-"} ${meta.grade || "-"}학년 ${meta.className || "-"} · 분석 기록 ${meta.attemptCount || 0}건${createdAtText}`;
 
   const hasData = Number(meta.attemptCount || 0) > 0;
-  aiDiagnosisEmptyEl.hidden = hasData;
-  aiDiagnosisPanelEl.hidden = !hasData;
+  els.emptyEl.hidden = hasData;
+  els.panelEl.hidden = !hasData;
 
-  aiDiagnosisHeadlineEl.textContent = diagnosis.headline || "AI 진단 결과";
-  renderConfidenceBadge(aiDiagnosisConfidenceBadgeEl, meta);
-  aiDiagnosisOverviewEl.textContent = diagnosis.overview || "";
+  els.headlineEl.textContent = diagnosis.headline || "AI 진단 결과";
+  renderConfidenceBadge(els.confidenceBadgeEl, meta);
+  els.overviewEl.textContent = diagnosis.overview || "";
 
-  renderSimpleList(aiDiagnosisTimelineListEl, diagnosis.timelineInsights || []);
-  renderSimpleList(aiDiagnosisIndicatorListEl, diagnosis.indicatorInsights || []);
-  renderSimpleList(aiActionPlanListEl, diagnosis.actionPlan || []);
-  renderRecommendationList(aiTextbookListEl, recommendations.textbooks || [], "textbook");
-  renderRecommendationList(aiBookListEl, recommendations.books || [], "book");
+  renderSimpleList(els.timelineListEl, diagnosis.timelineInsights || []);
+  renderSimpleList(els.indicatorListEl, diagnosis.indicatorInsights || []);
+  renderSimpleList(els.actionPlanListEl, diagnosis.actionPlan || []);
+  renderRecommendationList(els.textbookListEl, recommendations.textbooks || [], "textbook");
+  renderRecommendationList(els.bookListEl, recommendations.books || [], "book");
+}
+
+function renderAiDiagnosisHistoryList(container, history, currentId, onSelect) {
+  container.innerHTML = "";
+
+  if (!history.length) {
+    container.innerHTML = '<div class="ai-history-empty">아직 저장된 진단 기록이 없어요.</div>';
+    return;
+  }
+
+  history.forEach((entry) => {
+    const meta = entry.meta || {};
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ai-history-item";
+    btn.classList.toggle("active", meta.id === currentId);
+    const when = meta.createdAt ? new Date(meta.createdAt).toLocaleString("ko-KR") : "-";
+    const headline = (entry.diagnosis && entry.diagnosis.headline) || "AI 진단 결과";
+
+    const dateSpan = document.createElement("span");
+    dateSpan.className = "ai-history-date";
+    dateSpan.textContent = when;
+
+    const headlineSpan = document.createElement("span");
+    headlineSpan.className = "ai-history-headline";
+    headlineSpan.textContent = headline;
+
+    btn.appendChild(dateSpan);
+    btn.appendChild(headlineSpan);
+    btn.addEventListener("click", () => onSelect(entry));
+    container.appendChild(btn);
+  });
+}
+
+let aiDiagnosisHistoryCache = [];
+
+function renderAiDiagnosis(result) {
+  renderAiDiagnosisInto(result, {
+    metaEl: aiDiagnosisMetaEl,
+    emptyEl: aiDiagnosisEmptyEl,
+    panelEl: aiDiagnosisPanelEl,
+    headlineEl: aiDiagnosisHeadlineEl,
+    confidenceBadgeEl: aiDiagnosisConfidenceBadgeEl,
+    overviewEl: aiDiagnosisOverviewEl,
+    timelineListEl: aiDiagnosisTimelineListEl,
+    indicatorListEl: aiDiagnosisIndicatorListEl,
+    actionPlanListEl: aiActionPlanListEl,
+    textbookListEl: aiTextbookListEl,
+    bookListEl: aiBookListEl
+  });
+  renderAiDiagnosisHistoryList(aiDiagnosisHistoryListEl, aiDiagnosisHistoryCache, result.meta ? result.meta.id ?? null : null, (entry) => {
+    renderAiDiagnosis(entry);
+  });
 }
 
 async function loadAiDiagnosis(forceRefresh = false) {
@@ -1033,39 +1610,44 @@ async function loadAiDiagnosis(forceRefresh = false) {
   }
 
   const currentStudent = getCurrentStudent();
-  const result = await fetchJSON(`/api/my-ai-diagnosis?studentId=${currentStudent.id}`);
+  const url = forceRefresh
+    ? `/api/my-ai-diagnosis?studentId=${currentStudent.id}&forceRefresh=true`
+    : `/api/my-ai-diagnosis?studentId=${currentStudent.id}`;
+  const result = await fetchJSON(url);
+  const historyResult = await fetchJSON(`/api/my-ai-diagnosis-history?studentId=${currentStudent.id}`);
+  aiDiagnosisHistoryCache = historyResult.history || [];
   renderAiDiagnosis(result);
   aiDiagnosisLoaded = true;
 }
 
-function renderTimelineCharts(rows) {
+function renderTimelineChartsInto(rows, els) {
   const sortedRows = [...rows].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
   const count = sortedRows.length;
 
-  timelineTotalChartEl.innerHTML = "";
-  timelineIndicatorChartEl.innerHTML = "";
-  timelineIndicatorLegendEl.innerHTML = "";
+  els.totalChartEl.innerHTML = "";
+  els.indicatorChartEl.innerHTML = "";
+  els.indicatorLegendEl.innerHTML = "";
 
   if (!count) {
-    timelineSummaryEl.textContent = "내 평가 기록이 아직 없어요.";
-    timelineEmptyEl.hidden = false;
-    timelineChartGroupEl.hidden = true;
+    els.summaryEl.textContent = els.emptyMessage || "평가 기록이 아직 없어요.";
+    els.emptyEl.hidden = false;
+    els.chartGroupEl.hidden = true;
     return;
   }
 
-  timelineEmptyEl.hidden = true;
-  timelineChartGroupEl.hidden = false;
+  els.emptyEl.hidden = true;
+  els.chartGroupEl.hidden = false;
 
   const latest = sortedRows[count - 1];
   const latestScore = normalizeTotalScoreTo100(latest.total_score);
   const highest = sortedRows.reduce((max, row) => Math.max(max, normalizeTotalScoreTo100(row.total_score)), 0);
-  timelineSummaryEl.textContent = `총 ${count}건의 평가 기록이 있습니다. 최근 총점 ${latestScore.toFixed(1)}점, 최고 총점 ${highest.toFixed(1)}점입니다.`;
+  els.summaryEl.textContent = `총 ${count}건의 평가 기록이 있습니다. 최근 총점 ${latestScore.toFixed(1)}점, 최고 총점 ${highest.toFixed(1)}점입니다.`;
 
   const totalWidth = 920;
   const totalHeight = 280;
   const totalGeometry = getTimelineChartGeometry(count, totalWidth, totalHeight);
-  drawTimelineAxes(timelineTotalChartEl, totalGeometry, 100, 5, sortedRows);
-  drawTimelineSeries(timelineTotalChartEl, totalGeometry, sortedRows, {
+  drawTimelineAxes(els.totalChartEl, totalGeometry, 100, 5, sortedRows);
+  drawTimelineSeries(els.totalChartEl, totalGeometry, sortedRows, {
     maxValue: 100,
     valueGetter: (row) => normalizeTotalScoreTo100(row.total_score),
     color: "#ff6b35",
@@ -1080,10 +1662,10 @@ function renderTimelineCharts(rows) {
   const indicatorWidth = 920;
   const indicatorHeight = 320;
   const indicatorGeometry = getTimelineChartGeometry(count, indicatorWidth, indicatorHeight);
-  drawTimelineAxes(timelineIndicatorChartEl, indicatorGeometry, 5, 5, sortedRows);
+  drawTimelineAxes(els.indicatorChartEl, indicatorGeometry, 5, 5, sortedRows);
 
   timelineIndicatorConfig.forEach((indicator) => {
-    drawTimelineSeries(timelineIndicatorChartEl, indicatorGeometry, sortedRows, {
+    drawTimelineSeries(els.indicatorChartEl, indicatorGeometry, sortedRows, {
       maxValue: 5,
       valueGetter: (row) => row[indicator.key],
       color: indicator.color,
@@ -1093,7 +1675,19 @@ function renderTimelineCharts(rows) {
     });
   });
 
-  renderTimelineLegend();
+  renderTimelineLegendInto(els.indicatorLegendEl);
+}
+
+function renderTimelineCharts(rows) {
+  renderTimelineChartsInto(rows, {
+    totalChartEl: timelineTotalChartEl,
+    indicatorChartEl: timelineIndicatorChartEl,
+    indicatorLegendEl: timelineIndicatorLegendEl,
+    summaryEl: timelineSummaryEl,
+    emptyEl: timelineEmptyEl,
+    chartGroupEl: timelineChartGroupEl,
+    emptyMessage: "내 평가 기록이 아직 없어요."
+  });
 }
 
 function renderStudentRadarChart(selfScores, peerScores, peerCount) {
@@ -1317,6 +1911,53 @@ async function loadAllDashboard() {
   renderTeacherDashboard(data);
 }
 
+let evaluationProgressTimer = null;
+
+// LLM 응답에는 실제 진행률이 없으므로, 97%까지만 점점 느려지며 채우다가
+// 실제 응답이 오면 100%로 마무리하는 방식으로 체감 대기 시간을 표현한다.
+function startEvaluationProgress({
+  title = "AI가 감상문을 평가하고 있어요",
+  initialMessage = "AI가 감상문을 읽고 있어요...",
+  laterMessage = "5개 지표로 점수를 계산하고 있어요..."
+} = {}) {
+  let percent = 0;
+  clearInterval(evaluationProgressTimer);
+
+  evaluationProgressTitleEl.textContent = title;
+  evaluationProgressOverlayEl.classList.add("open");
+  evaluationProgressOverlayEl.setAttribute("aria-hidden", "false");
+  evaluationProgressMessageEl.textContent = initialMessage;
+  evaluationProgressFillEl.style.width = "0%";
+  evaluationProgressPercentEl.textContent = "0%";
+
+  evaluationProgressTimer = setInterval(() => {
+    const remaining = 97 - percent;
+    percent = Math.min(97, percent + Math.max(0.4, remaining * 0.06));
+    evaluationProgressFillEl.style.width = `${percent}%`;
+    evaluationProgressPercentEl.textContent = `${Math.floor(percent)}%`;
+
+    if (percent > 60) {
+      evaluationProgressMessageEl.textContent = laterMessage;
+    }
+  }, 300);
+}
+
+async function finishEvaluationProgress(completeMessage = "평가가 완료됐어요!") {
+  clearInterval(evaluationProgressTimer);
+  evaluationProgressTimer = null;
+  evaluationProgressFillEl.style.width = "100%";
+  evaluationProgressPercentEl.textContent = "100%";
+  evaluationProgressMessageEl.textContent = completeMessage;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+function hideEvaluationProgress() {
+  clearInterval(evaluationProgressTimer);
+  evaluationProgressTimer = null;
+  evaluationProgressOverlayEl.classList.remove("open");
+  evaluationProgressOverlayEl.setAttribute("aria-hidden", "true");
+}
+
 logoutButton.addEventListener("click", () => {
   localStorage.removeItem(SESSION_STORAGE_KEY);
   goToLogin();
@@ -1341,6 +1982,10 @@ form.addEventListener("submit", async (event) => {
     }
   };
 
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  startEvaluationProgress();
+
   try {
     const result = await fetchJSON("/api/submissions", {
       method: "POST",
@@ -1348,31 +1993,53 @@ form.addEventListener("submit", async (event) => {
       body: JSON.stringify(payload)
     });
 
+    await finishEvaluationProgress();
+    hideEvaluationProgress();
+
     renderEvaluation(result.evaluation);
     await loadMyDashboard();
     activateView("dashboard");
     alert("평가와 저장이 완료되었어요.");
   } catch (error) {
+    hideEvaluationProgress();
     alert(error.message);
+  } finally {
+    submitButton.disabled = false;
   }
 });
 
-refreshButton.addEventListener("click", loadMyDashboard);
 timelineRefreshButton.addEventListener("click", loadMyDashboard);
 aiDiagnosisRefreshButton.addEventListener("click", async () => {
+  aiDiagnosisRefreshButton.disabled = true;
+  startEvaluationProgress({
+    title: "AI가 진단·추천을 분석하고 있어요",
+    initialMessage: "최근 독서 활동을 살펴보고 있어요...",
+    laterMessage: "강점과 보완점을 정리하고 있어요..."
+  });
+
   try {
     await loadAiDiagnosis(true);
+    await finishEvaluationProgress("분석이 완료됐어요!");
+    hideEvaluationProgress();
   } catch (error) {
+    hideEvaluationProgress();
     alert(error.message);
+  } finally {
+    aiDiagnosisRefreshButton.disabled = false;
   }
 });
-teacherRefreshButton.addEventListener("click", loadAllDashboard);
 assignmentCheckRefreshButton.addEventListener("click", async () => {
   try {
     await loadAssignmentsForStudent();
   } catch (error) {
     alert(error.message);
   }
+});
+discussionNewButton.addEventListener("click", showDiscussionStartForm);
+discussionStartButton.addEventListener("click", startNewDiscussion);
+discussionChatFormEl.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendDiscussionMessage();
 });
 assignmentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1417,6 +2084,24 @@ teacherFilterResetButton.addEventListener("click", () => {
   populateTeacherClassFilterOptions();
   teacherClassFilter.value = "";
   applyTeacherFiltersAndRender();
+});
+function rerenderTeacherTrendFromFilters() {
+  teacherTrendCurrentPage = 1;
+  renderTeacherStudentTrendList(getFilteredTeacherTrendRows());
+}
+
+teacherTrendSchoolInput.addEventListener("input", rerenderTeacherTrendFromFilters);
+teacherTrendNameInput.addEventListener("input", rerenderTeacherTrendFromFilters);
+teacherTrendClassFilter.addEventListener("change", rerenderTeacherTrendFromFilters);
+teacherTrendMinScoreInput.addEventListener("input", rerenderTeacherTrendFromFilters);
+teacherTrendMaxScoreInput.addEventListener("input", rerenderTeacherTrendFromFilters);
+teacherTrendFilterResetButton.addEventListener("click", () => {
+  teacherTrendSchoolInput.value = "";
+  teacherTrendNameInput.value = "";
+  teacherTrendClassFilter.value = "";
+  teacherTrendMinScoreInput.value = "";
+  teacherTrendMaxScoreInput.value = "";
+  rerenderTeacherTrendFromFilters();
 });
 studentDetailCloseButton.addEventListener("click", closeStudentDetailModal);
 studentDetailModalEl.addEventListener("click", (event) => {
@@ -1497,6 +2182,16 @@ gnbButtons.forEach((button) => {
         alert(error.message);
       }
     }
+    if (button.dataset.view === "ai-discussion") {
+      try {
+        await loadDiscussionSessions();
+        if (!activeDiscussionSessionId) {
+          showDiscussionStartForm();
+        }
+      } catch (error) {
+        alert(error.message);
+      }
+    }
   });
 });
 
@@ -1512,6 +2207,22 @@ dashboardQuickChips.forEach((chip) => {
         alert(error.message);
       }
     }
+  });
+});
+
+teacherPanelChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const targetPanel = chip.dataset.teacherPanel;
+    teacherPanelChips.forEach((c) => c.classList.toggle("active", c === chip));
+    document.querySelectorAll(".teacher-tab-panel").forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.teacherPanel === targetPanel);
+    });
+  });
+});
+
+teacherHistoryTabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    setActiveTeacherHistoryTab(btn.dataset.historyTab);
   });
 });
 
@@ -1585,32 +2296,45 @@ function renderEvaluation(evaluation) {
   });
 }
 
-function renderDashboard(data) {
+function getFilteredDashboardRows() {
+  const keyword = dashboardSearchInputEl.value.trim().toLowerCase();
+  const sourceFilter = dashboardSourceFilterEl.value;
+
+  return myDashboardRows.filter((row) => {
+    if (sourceFilter !== "all" && row.source_type !== sourceFilter) {
+      return false;
+    }
+
+    if (!keyword) {
+      return true;
+    }
+
+    const haystack = `${row.book_title || ""} ${row.feedback?.comprehension || ""}`.toLowerCase();
+    return haystack.includes(keyword);
+  });
+}
+
+function renderDashboardRows(rows) {
   dashboardBodyEl.innerHTML = "";
-  myDashboardRows = data.rows || [];
-  renderTimelineCharts(myDashboardRows);
 
-  const reflectionCount = data.stats.reflection_count || 0;
-  const avgScore = data.stats.avg_score || 0;
-
-  statsEl.innerHTML = `
-    <div class="stat-pill">내 제출 수: ${reflectionCount}</div>
-    <div class="stat-pill">내 평균 점수: ${avgScore || 0}</div>
-  `;
-
-  if (!data.rows.length) {
+  if (!rows.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="4">🌱 아직 저장된 평가가 없어요. 문해력 평가 메뉴에서 첫 감상문을 작성해보세요.</td>`;
+    const message = myDashboardRows.length
+      ? "🔍 조건에 맞는 평가 기록이 없어요."
+      : "🌱 아직 저장된 평가가 없어요. 문해력 평가 메뉴에서 첫 감상문을 작성해보세요.";
+    tr.innerHTML = `<td colspan="5">${message}</td>`;
     dashboardBodyEl.appendChild(tr);
     return;
   }
 
-  data.rows.forEach((row) => {
+  rows.forEach((row) => {
     const tr = document.createElement("tr");
     const when = new Date(row.submitted_at).toLocaleString("ko-KR");
+    const isTeacherAssigned = row.source_type === "teacher";
 
     tr.innerHTML = `
-      <td><button type="button" class="student-book-link" data-reflection-id="${row.reflection_id}">${row.book_title}</button><br/>${row.book_author || ""}</td>
+      <td><span class="source-badge ${isTeacherAssigned ? "source-badge-teacher" : "source-badge-self"}">${isTeacherAssigned ? "교사" : "본인"}</span></td>
+      <td><button type="button" class="student-book-link" data-reflection-id="${row.reflection_id}">${row.book_title}</button></td>
       <td>${row.total_score}점</td>
       <td>${row.feedback?.comprehension || ""}</td>
       <td>${when}</td>
@@ -1634,6 +2358,24 @@ function renderDashboard(data) {
     });
   });
 }
+
+function renderDashboard(data) {
+  myDashboardRows = data.rows || [];
+  renderTimelineCharts(myDashboardRows);
+
+  const reflectionCount = data.stats.reflection_count || 0;
+  const avgScore = data.stats.avg_score || 0;
+
+  statsEl.innerHTML = `
+    <div class="stat-pill">내 제출 수: ${reflectionCount}</div>
+    <div class="stat-pill">내 평균 점수: ${avgScore || 0}</div>
+  `;
+
+  renderDashboardRows(getFilteredDashboardRows());
+}
+
+dashboardSearchInputEl.addEventListener("input", () => renderDashboardRows(getFilteredDashboardRows()));
+dashboardSourceFilterEl.addEventListener("change", () => renderDashboardRows(getFilteredDashboardRows()));
 
 async function loadIndicators() {
   const data = await fetchJSON("/api/indicators");
