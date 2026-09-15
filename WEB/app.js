@@ -112,6 +112,22 @@ const discussionMessagesEl = document.getElementById("discussionMessages");
 const discussionChatFormEl = document.getElementById("discussionChatForm");
 const discussionChatInputEl = document.getElementById("discussionChatInput");
 const discussionSendButton = document.getElementById("discussionSendButton");
+const bookSearchKeywordInputEl = document.getElementById("bookSearchKeywordInput");
+const bookSearchAgeGroupFilterEl = document.getElementById("bookSearchAgeGroupFilter");
+const bookSearchCategoryFilterEl = document.getElementById("bookSearchCategoryFilter");
+const bookSearchResetButton = document.getElementById("bookSearchResetButton");
+const bookSearchGridEl = document.getElementById("bookSearchGrid");
+const bookSearchCountEl = document.getElementById("bookSearchCount");
+const bookSearchEmptyEl = document.getElementById("bookSearchEmpty");
+const bookDetailModalEl = document.getElementById("bookDetailModal");
+const bookDetailCloseButton = document.getElementById("bookDetailCloseButton");
+const bookDetailImageEl = document.getElementById("bookDetailImage");
+const bookDetailTitleEl = document.getElementById("bookDetailTitle");
+const bookDetailAgeGroupBadgeEl = document.getElementById("bookDetailAgeGroupBadge");
+const bookDetailCategoryBadgeEl = document.getElementById("bookDetailCategoryBadge");
+const bookDetailMonthBadgeEl = document.getElementById("bookDetailMonthBadge");
+const bookDetailBookInfoEl = document.getElementById("bookDetailBookInfo");
+const bookDetailDescriptionEl = document.getElementById("bookDetailDescription");
 const gnbButtons = Array.from(document.querySelectorAll(".gnb-btn"));
 const dashboardQuickChips = Array.from(document.querySelectorAll("#view-dashboard .dashboard-chip"));
 const teacherPanelChips = Array.from(document.querySelectorAll("#view-teacher-dashboard .dashboard-chip"));
@@ -127,6 +143,7 @@ let studentAssignments = [];
 let selectedAssignmentId = null;
 let discussionSessions = [];
 let activeDiscussionSessionId = null;
+let nlcyBooksCache = [];
 let selectedTeacherHistoryStudentId = null;
 let activeTeacherHistoryTab = "books";
 const teacherHistoryAiCache = new Map();
@@ -279,6 +296,113 @@ function renderAssignmentList(items) {
 async function loadAssignments() {
   const data = await fetchJSON("/api/assignments");
   renderAssignmentList(data.assignments || []);
+}
+
+function extractAuthorFromBookInfo(bookInfo) {
+  if (!bookInfo) {
+    return "";
+  }
+  const rolePattern = "글쓴이|지은이|글그림|그린이|옮긴이|저자|글|그림|옮김|지음|시|씀";
+  let segment = bookInfo.split("|")[0].split(";")[0].trim();
+  segment = segment.replace(new RegExp(`^(?:${rolePattern})\\s*[:：]\\s*`), "");
+  segment = segment.replace(new RegExp(`\\s+(?:${rolePattern})$`), "");
+  return segment.trim();
+}
+
+function populateBookCategoryFilter(books) {
+  const previousValue = bookSearchCategoryFilterEl.value;
+  const categories = Array.from(new Set(books.map((book) => book.subjectCategory).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, "ko")
+  );
+
+  bookSearchCategoryFilterEl.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "전체";
+  bookSearchCategoryFilterEl.appendChild(allOption);
+
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    bookSearchCategoryFilterEl.appendChild(option);
+  });
+
+  if (categories.includes(previousValue)) {
+    bookSearchCategoryFilterEl.value = previousValue;
+  }
+}
+
+function getFilteredBookSearchRows() {
+  const keyword = bookSearchKeywordInputEl.value.trim().toLowerCase();
+  const ageGroup = bookSearchAgeGroupFilterEl.value;
+  const category = bookSearchCategoryFilterEl.value;
+
+  return nlcyBooksCache.filter((book) => {
+    if (ageGroup && book.ageGroup !== ageGroup) {
+      return false;
+    }
+    if (category && book.subjectCategory !== category) {
+      return false;
+    }
+    if (keyword) {
+      const haystack = `${book.title || ""} ${extractAuthorFromBookInfo(book.bookInfo)} ${book.description || ""}`.toLowerCase();
+      if (!haystack.includes(keyword)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function renderBookSearchGrid(books) {
+  bookSearchGridEl.innerHTML = "";
+  bookSearchCountEl.textContent = `전체 ${nlcyBooksCache.length}건 중 ${books.length}건 표시`;
+  bookSearchEmptyEl.hidden = books.length > 0;
+
+  books.forEach((book) => {
+    const card = document.createElement("div");
+    card.className = "book-search-card";
+
+    const coverButton = document.createElement("button");
+    coverButton.type = "button";
+    coverButton.className = "book-search-cover-button";
+    coverButton.setAttribute("aria-label", `${book.title || "도서"} 상세보기`);
+    coverButton.addEventListener("click", () => openBookDetailModal(book));
+
+    const img = document.createElement("img");
+    img.className = "book-search-cover";
+    img.src = book.imageUrl || "";
+    img.alt = book.title || "";
+    img.loading = "lazy";
+    coverButton.appendChild(img);
+
+    const title = document.createElement("p");
+    title.className = "book-search-title";
+    title.textContent = book.title || "제목 미상";
+
+    const author = document.createElement("p");
+    author.className = "book-search-author";
+    author.textContent = extractAuthorFromBookInfo(book.bookInfo) || "저자 미기재";
+
+    const meta = document.createElement("p");
+    meta.className = "book-search-meta";
+    meta.textContent = `${book.ageGroup || ""} · ${book.subjectCategory || "주제 미분류"}`;
+
+    card.append(coverButton, title, author, meta);
+    bookSearchGridEl.appendChild(card);
+  });
+}
+
+function applyBookSearchFilters() {
+  renderBookSearchGrid(getFilteredBookSearchRows());
+}
+
+async function loadBookSearch() {
+  const data = await fetchJSON("/api/nlcy-books");
+  nlcyBooksCache = data.books || [];
+  populateBookCategoryFilter(nlcyBooksCache);
+  applyBookSearchFilters();
 }
 
 function renderStudentAssignmentDetail(assignment) {
@@ -1243,6 +1367,25 @@ function closeStudentDetailModal() {
   studentDetailModalEl.setAttribute("aria-hidden", "true");
 }
 
+function openBookDetailModal(book) {
+  bookDetailImageEl.src = book.imageUrl || "";
+  bookDetailImageEl.alt = book.title || "";
+  bookDetailTitleEl.textContent = book.title || "제목 미상";
+  bookDetailAgeGroupBadgeEl.textContent = book.ageGroup || "";
+  bookDetailCategoryBadgeEl.textContent = book.subjectCategory || "주제 미분류";
+  bookDetailMonthBadgeEl.textContent =
+    book.recommendYear && book.recommendMonth ? `${book.recommendYear}년 ${book.recommendMonth}월 추천` : "";
+  bookDetailBookInfoEl.textContent = book.bookInfo || "";
+  bookDetailDescriptionEl.textContent = book.description || "책소개가 없습니다.";
+  bookDetailModalEl.classList.add("open");
+  bookDetailModalEl.setAttribute("aria-hidden", "false");
+}
+
+function closeBookDetailModal() {
+  bookDetailModalEl.classList.remove("open");
+  bookDetailModalEl.setAttribute("aria-hidden", "true");
+}
+
 function toRadarPoints(values, cx, cy, radius) {
   return values
     .map((value, index) => {
@@ -2115,6 +2258,21 @@ teacherDetailModalEl.addEventListener("click", (event) => {
     closeTeacherDetailModal();
   }
 });
+bookSearchKeywordInputEl.addEventListener("input", applyBookSearchFilters);
+bookSearchAgeGroupFilterEl.addEventListener("change", applyBookSearchFilters);
+bookSearchCategoryFilterEl.addEventListener("change", applyBookSearchFilters);
+bookSearchResetButton.addEventListener("click", () => {
+  bookSearchKeywordInputEl.value = "";
+  bookSearchAgeGroupFilterEl.value = "";
+  bookSearchCategoryFilterEl.value = "";
+  applyBookSearchFilters();
+});
+bookDetailCloseButton.addEventListener("click", closeBookDetailModal);
+bookDetailModalEl.addEventListener("click", (event) => {
+  if (event.target === bookDetailModalEl) {
+    closeBookDetailModal();
+  }
+});
 teacherDetailDragBarEl.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) {
     return;
@@ -2162,6 +2320,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeStudentDetailModal();
     closeTeacherDetailModal();
+    closeBookDetailModal();
   }
 });
 
@@ -2188,6 +2347,13 @@ gnbButtons.forEach((button) => {
         if (!activeDiscussionSessionId) {
           showDiscussionStartForm();
         }
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+    if (button.dataset.view === "book-search") {
+      try {
+        await loadBookSearch();
       } catch (error) {
         alert(error.message);
       }

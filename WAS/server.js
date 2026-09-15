@@ -21,7 +21,8 @@ const {
   addDiscussionMessage,
   createAiDiagnosis,
   getLatestAiDiagnosis,
-  getAiDiagnosisHistory
+  getAiDiagnosisHistory,
+  getNlcyRecommendedBooks
 } = require("../DB/database");
 const { INDICATORS } = require("./services/evaluator");
 const { evaluateWithLLM, diagnoseWithLLM, chatDiscussionReply, checkLlmHealth } = require("./services/llm/llmLiteracyService");
@@ -224,6 +225,10 @@ app.get("/api/health", async (req, res) => {
 
 app.get("/api/indicators", (req, res) => {
   res.json({ indicators: INDICATORS });
+});
+
+app.get("/api/nlcy-books", (req, res) => {
+  res.json({ books: getNlcyRecommendedBooks() });
 });
 
 app.post("/api/auth/login", (req, res) => {

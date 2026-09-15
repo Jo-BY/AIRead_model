@@ -121,6 +121,18 @@ function initDatabase() {
       source TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS nlcy_recommended_books (
+      id TEXT PRIMARY KEY,
+      age_group TEXT NOT NULL,
+      recommend_year INTEGER NOT NULL,
+      recommend_month INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      image_url TEXT,
+      subject_category TEXT,
+      book_info TEXT,
+      description TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS discussion_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id INTEGER NOT NULL,
@@ -840,6 +852,20 @@ function seedRecommendedBooks(items) {
   }));
 }
 
+function seedNlcyRecommendedBooks(items) {
+  return replaceReferenceTable("nlcy_recommended_books", items, (item) => ({
+    id: item.id,
+    age_group: item.ageGroup,
+    recommend_year: item.recommendYear,
+    recommend_month: item.recommendMonth,
+    title: item.title,
+    image_url: item.imageUrl || null,
+    subject_category: item.subjectCategory || null,
+    book_info: item.bookInfo || null,
+    description: item.description || null
+  }));
+}
+
 function getRubricByGradeBand(gradeBand) {
   return db
     .prepare(
@@ -900,6 +926,23 @@ function getRecommendedBooks(gradeBand, indicatorKey) {
     `
     )
     .all(gradeBand, indicatorKey);
+}
+
+function getNlcyRecommendedBooks(ageGroup) {
+  const columns = `
+      id, age_group AS ageGroup, recommend_year AS recommendYear, recommend_month AS recommendMonth,
+      title, image_url AS imageUrl, subject_category AS subjectCategory, book_info AS bookInfo, description
+  `;
+  if (ageGroup) {
+    return db
+      .prepare(
+        `SELECT ${columns} FROM nlcy_recommended_books WHERE age_group = ? ORDER BY recommend_year DESC, recommend_month DESC, id`
+      )
+      .all(ageGroup);
+  }
+  return db
+    .prepare(`SELECT ${columns} FROM nlcy_recommended_books ORDER BY age_group, recommend_year DESC, recommend_month DESC, id`)
+    .all();
 }
 
 function mapAiDiagnosisRow(row) {
@@ -1011,10 +1054,12 @@ module.exports = {
   seedCurriculumStandards,
   seedRecommendedTextbooks,
   seedRecommendedBooks,
+  seedNlcyRecommendedBooks,
   getRubricByGradeBand,
   getCurriculumStandardsByGradeBand,
   getRecommendedTextbooks,
   getRecommendedBooks,
+  getNlcyRecommendedBooks,
   createAiDiagnosis,
   getLatestAiDiagnosis,
   getAiDiagnosisHistory
