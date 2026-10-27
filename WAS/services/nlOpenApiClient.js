@@ -69,13 +69,44 @@ function pick(source, ...keys) {
   return "";
 }
 
+// recommokcha/recomcontens 등 실데이터는 <br />/&nbsp; 같은 HTML을 엔티티로 이스케이프한
+// 평문 문자열로 내려온다(실제 태그 중첩이 아님) - 그대로 노출하면 "<br />"가 글자 그대로
+// 보이므로 줄바꿈/공백으로 정리하고 태그를 제거해 사람이 읽기 좋은 평문으로 바꾼다.
+// 실데이터에는 두 가지 오염이 섞여 있어 아래 순서가 중요하다:
+// (1) 종결 세미콜론이 빠진 엔티티(예: "&#039살아" - 정상이면 "&#039;")가 있어 세미콜론을
+//     선택 요소(;?)로 관대하게 매칭하고, (2) "&amp;nbsp;"/"&amp;lt;...&amp;gt;"처럼 한 번 더
+//     이스케이프된 2중 엔티티가 있어 &amp;를 다른 엔티티보다 먼저 풀어야 그 다음 단계에서
+//     드러난 &nbsp;/&lt;/&gt;가 올바르게 재해석된다.
+function cleanRichText(value) {
+  if (!value) {
+    return "";
+  }
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;?/gi, "&")
+    .replace(/&nbsp;?/gi, " ")
+    .replace(/&#(\d+);?/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-f]+);?/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&lt;?/gi, "<")
+    .replace(/&gt;?/gi, ">")
+    .replace(/&quot;?/gi, "\"")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // recomNo/ISBN처럼 숫자처럼 보이지만 손실 없이 문자열로 보존해야 하는 필드가 있어
 // 자동 숫자 변환(parseTagValue)을 꺼두고 필요한 값만 직접 Number()로 변환한다.
+// "item"뿐 아니라 "list"도 강제 배열화한다 - 실제 응답은 결과가 1건이어도/여러 건이어도
+// <list> 자체가 <item>을 담은 채 형제 태그로 반복되는 구조라서(가이드 문서의 단일 예시와 다름),
+// list/item 모두 항상 배열로 고정해야 1건·다건 응답을 동일한 코드로 안전하게 처리할 수 있다.
 const xmlParser = new XMLParser({
   ignoreAttributes: true,
   parseTagValue: false,
   trimValues: true,
-  isArray: (tagName) => tagName === "item"
+  isArray: (tagName) => tagName === "item" || tagName === "list"
 });
 
 function mapItem(item) {
@@ -89,8 +120,8 @@ function mapItem(item) {
     callNo: pick(item, "recomcallno", "rcomcallno"),
     isbn: pick(item, "recomisbn", "recome_isbn"),
     imageUrl: pick(item, "recomfilepath"),
-    toc: pick(item, "recommokcha"),
-    description: pick(item, "recomcontents", "recomcontens"),
+    toc: cleanRichText(pick(item, "recommokcha")),
+    description: cleanRichText(pick(item, "recomcontents", "recomcontens")),
     regDate: pick(item, "Regdate", "regdate"),
     controlNo: pick(item, "controlNo"),
     publishYear: pick(item, "publishYear"),
@@ -165,7 +196,9 @@ async function fetchRecommendedBooks({ startRowNumApi, endRowNumApi, startDate, 
 
   const channel = (parsed && parsed.channel) || {};
   const totalCount = Number(pick(channel, "totalCount")) || 0;
-  const items = (channel.list && channel.list.item) || [];
+  // list/item 모두 isArray로 강제 배열화했으므로, <list> 형제 태그들을 펼쳐 각각의 <item> 배열을 이어붙인다.
+  const listEntries = Array.isArray(channel.list) ? channel.list : [];
+  const items = listEntries.flatMap((entry) => (Array.isArray(entry && entry.item) ? entry.item : []));
 
   return {
     totalCount,
