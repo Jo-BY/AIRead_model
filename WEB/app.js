@@ -119,6 +119,18 @@ const bookSearchResetButton = document.getElementById("bookSearchResetButton");
 const bookSearchGridEl = document.getElementById("bookSearchGrid");
 const bookSearchCountEl = document.getElementById("bookSearchCount");
 const bookSearchEmptyEl = document.getElementById("bookSearchEmpty");
+const bookSourceTabButtons = Array.from(document.querySelectorAll("[data-book-source-tab]"));
+const bookSourceContents = Array.from(document.querySelectorAll("[data-book-source-content]"));
+const nlOpenApiKeywordInputEl = document.getElementById("nlOpenApiKeywordInput");
+const nlOpenApiCategoryFilterEl = document.getElementById("nlOpenApiCategoryFilter");
+const nlOpenApiStartDateInputEl = document.getElementById("nlOpenApiStartDateInput");
+const nlOpenApiEndDateInputEl = document.getElementById("nlOpenApiEndDateInput");
+const nlOpenApiSearchButton = document.getElementById("nlOpenApiSearchButton");
+const nlOpenApiResetButton = document.getElementById("nlOpenApiResetButton");
+const nlOpenApiStatusEl = document.getElementById("nlOpenApiStatus");
+const nlOpenApiCountEl = document.getElementById("nlOpenApiCount");
+const nlOpenApiGridEl = document.getElementById("nlOpenApiGrid");
+const nlOpenApiPaginationEl = document.getElementById("nlOpenApiPagination");
 const bookDetailModalEl = document.getElementById("bookDetailModal");
 const bookDetailCloseButton = document.getElementById("bookDetailCloseButton");
 const bookDetailImageEl = document.getElementById("bookDetailImage");
@@ -128,6 +140,21 @@ const bookDetailCategoryBadgeEl = document.getElementById("bookDetailCategoryBad
 const bookDetailMonthBadgeEl = document.getElementById("bookDetailMonthBadge");
 const bookDetailBookInfoEl = document.getElementById("bookDetailBookInfo");
 const bookDetailDescriptionEl = document.getElementById("bookDetailDescription");
+const assignmentBookTitleInputEl = document.getElementById("assignmentBookTitleInput");
+const assignmentBookAuthorInputEl = document.getElementById("assignmentBookAuthorInput");
+const assignmentSummaryInputEl = document.getElementById("assignmentSummaryInput");
+const assignmentObjectiveInputEl = document.getElementById("assignmentObjectiveInput");
+const assignmentBookTitleSearchButton = document.getElementById("assignmentBookTitleSearchButton");
+const assignmentBookAuthorSearchButton = document.getElementById("assignmentBookAuthorSearchButton");
+const assignmentBookPickerModalEl = document.getElementById("assignmentBookPickerModal");
+const assignmentBookPickerCloseButton = document.getElementById("assignmentBookPickerCloseButton");
+const assignmentBookPickerKeywordInputEl = document.getElementById("assignmentBookPickerKeywordInput");
+const assignmentBookPickerAgeGroupFilterEl = document.getElementById("assignmentBookPickerAgeGroupFilter");
+const assignmentBookPickerCategoryFilterEl = document.getElementById("assignmentBookPickerCategoryFilter");
+const assignmentBookPickerResetButton = document.getElementById("assignmentBookPickerResetButton");
+const assignmentBookPickerGridEl = document.getElementById("assignmentBookPickerGrid");
+const assignmentBookPickerCountEl = document.getElementById("assignmentBookPickerCount");
+const assignmentBookPickerEmptyEl = document.getElementById("assignmentBookPickerEmpty");
 const gnbButtons = Array.from(document.querySelectorAll(".gnb-btn"));
 const dashboardQuickChips = Array.from(document.querySelectorAll("#view-dashboard .dashboard-chip"));
 const teacherPanelChips = Array.from(document.querySelectorAll("#view-teacher-dashboard .dashboard-chip"));
@@ -144,6 +171,12 @@ let selectedAssignmentId = null;
 let discussionSessions = [];
 let activeDiscussionSessionId = null;
 let nlcyBooksCache = [];
+let activeBookSearchSource = "nlcy";
+let nlOpenApiBooksCache = [];
+let nlOpenApiCurrentPage = 1;
+let nlOpenApiTotalCount = 0;
+let nlOpenApiLoaded = false;
+const NL_OPEN_API_PAGE_SIZE = 12;
 let selectedTeacherHistoryStudentId = null;
 let activeTeacherHistoryTab = "books";
 const teacherHistoryAiCache = new Map();
@@ -403,6 +436,332 @@ async function loadBookSearch() {
   nlcyBooksCache = data.books || [];
   populateBookCategoryFilter(nlcyBooksCache);
   applyBookSearchFilters();
+}
+
+function setActiveBookSearchSource(source) {
+  activeBookSearchSource = source;
+
+  bookSourceTabButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.bookSourceTab === source);
+  });
+  bookSourceContents.forEach((panel) => {
+    panel.hidden = panel.dataset.bookSourceContent !== source;
+  });
+
+  if (source === "nlopenapi" && !nlOpenApiLoaded) {
+    loadNlOpenApiBooks(1);
+  }
+}
+
+function getFilteredNlOpenApiRows() {
+  const keyword = nlOpenApiKeywordInputEl.value.trim().toLowerCase();
+  if (!keyword) {
+    return nlOpenApiBooksCache;
+  }
+  return nlOpenApiBooksCache.filter((book) => {
+    const haystack = `${book.title || ""} ${book.author || ""}`.toLowerCase();
+    return haystack.includes(keyword);
+  });
+}
+
+function renderNlOpenApiCount(filteredCount) {
+  if (nlOpenApiTotalCount === 0) {
+    nlOpenApiCountEl.textContent = "조건에 맞는 추천도서가 없어요.";
+    return;
+  }
+  nlOpenApiCountEl.textContent = `전체 ${nlOpenApiTotalCount.toLocaleString("ko-KR")}건 중 ${nlOpenApiCurrentPage}페이지 표시 (${filteredCount}건)`;
+}
+
+function renderNlOpenApiGrid(books) {
+  nlOpenApiGridEl.innerHTML = "";
+
+  books.forEach((book) => {
+    const card = document.createElement("div");
+    card.className = "book-search-card";
+
+    const coverButton = document.createElement("button");
+    coverButton.type = "button";
+    coverButton.className = "book-search-cover-button";
+    coverButton.setAttribute("aria-label", `${book.title || "도서"} 상세보기`);
+    coverButton.addEventListener("click", () => openNlOpenApiBookDetail(book));
+
+    const img = document.createElement("img");
+    img.className = "book-search-cover";
+    img.src = book.imageUrl || "";
+    img.alt = book.title || "";
+    img.loading = "lazy";
+    coverButton.appendChild(img);
+
+    const title = document.createElement("p");
+    title.className = "book-search-title";
+    title.textContent = book.title || "제목 미상";
+
+    const author = document.createElement("p");
+    author.className = "book-search-author";
+    author.textContent = book.author || "저자 미기재";
+
+    const meta = document.createElement("p");
+    meta.className = "book-search-meta";
+    const recomPeriod = book.recomYear && book.recomMonth ? `${book.recomYear}.${book.recomMonth} 추천` : "";
+    meta.textContent = [book.drCodeName || "분류 미상", recomPeriod].filter(Boolean).join(" · ");
+
+    card.append(coverButton, title, author, meta);
+    nlOpenApiGridEl.appendChild(card);
+  });
+}
+
+function renderNlOpenApiPagination() {
+  nlOpenApiPaginationEl.innerHTML = "";
+  const totalPages = Math.max(1, Math.ceil(nlOpenApiTotalCount / NL_OPEN_API_PAGE_SIZE));
+  if (totalPages <= 1) {
+    return;
+  }
+
+  const createPageButton = (label, page, options = {}) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "teacher-trend-page-btn";
+    btn.textContent = label;
+    btn.disabled = Boolean(options.disabled);
+    btn.addEventListener("click", () => loadNlOpenApiBooks(page));
+    return btn;
+  };
+
+  nlOpenApiPaginationEl.appendChild(
+    createPageButton("이전", nlOpenApiCurrentPage - 1, { disabled: nlOpenApiCurrentPage <= 1 })
+  );
+
+  const pageLabel = document.createElement("span");
+  pageLabel.className = "teacher-trend-page-btn";
+  pageLabel.style.cursor = "default";
+  pageLabel.textContent = `${nlOpenApiCurrentPage} / ${totalPages}`;
+  nlOpenApiPaginationEl.appendChild(pageLabel);
+
+  nlOpenApiPaginationEl.appendChild(
+    createPageButton("다음", nlOpenApiCurrentPage + 1, { disabled: nlOpenApiCurrentPage >= totalPages })
+  );
+}
+
+async function loadNlOpenApiBooks(page) {
+  nlOpenApiStatusEl.hidden = true;
+  nlOpenApiGridEl.innerHTML = "";
+  nlOpenApiPaginationEl.innerHTML = "";
+  nlOpenApiCountEl.textContent = "불러오는 중...";
+
+  const params = new URLSearchParams({ page: String(page), pageSize: String(NL_OPEN_API_PAGE_SIZE) });
+  if (nlOpenApiCategoryFilterEl.value) {
+    params.set("drCode", nlOpenApiCategoryFilterEl.value);
+  }
+  if (nlOpenApiStartDateInputEl.value) {
+    params.set("startDate", nlOpenApiStartDateInputEl.value);
+  }
+  if (nlOpenApiEndDateInputEl.value) {
+    params.set("endDate", nlOpenApiEndDateInputEl.value);
+  }
+
+  try {
+    const data = await fetchJSON(`/api/nl-open-books?${params.toString()}`);
+    nlOpenApiLoaded = true;
+
+    if (data.configured === false) {
+      nlOpenApiBooksCache = [];
+      nlOpenApiTotalCount = 0;
+      nlOpenApiCountEl.textContent = "";
+      nlOpenApiStatusEl.textContent = data.message || "국립중앙도서관 Open API가 아직 설정되지 않았습니다.";
+      nlOpenApiStatusEl.hidden = false;
+      renderNlOpenApiGrid([]);
+      return;
+    }
+
+    nlOpenApiCurrentPage = data.page || page;
+    nlOpenApiTotalCount = data.totalCount || 0;
+    nlOpenApiBooksCache = data.books || [];
+    const filtered = getFilteredNlOpenApiRows();
+    renderNlOpenApiCount(filtered.length);
+    renderNlOpenApiGrid(filtered);
+    renderNlOpenApiPagination();
+  } catch (error) {
+    nlOpenApiLoaded = true;
+    nlOpenApiBooksCache = [];
+    nlOpenApiTotalCount = 0;
+    nlOpenApiCountEl.textContent = "";
+    nlOpenApiStatusEl.textContent = error.message || "국립중앙도서관 Open API 호출 중 오류가 발생했어요.";
+    nlOpenApiStatusEl.hidden = false;
+    renderNlOpenApiGrid([]);
+  }
+}
+
+function openNlOpenApiBookDetail(book) {
+  bookDetailImageEl.src = book.imageUrl || "";
+  bookDetailImageEl.alt = book.title || "";
+  bookDetailTitleEl.textContent = book.title || "제목 미상";
+  bookDetailAgeGroupBadgeEl.textContent = book.publishYear ? `발행년도 ${book.publishYear}` : "";
+  bookDetailCategoryBadgeEl.textContent = book.drCodeName || "분류 미상";
+  bookDetailMonthBadgeEl.textContent =
+    book.recomYear && book.recomMonth ? `${book.recomYear}년 ${book.recomMonth}월 추천` : "";
+
+  const infoLines = [
+    book.author ? `저자: ${book.author}` : "",
+    book.publisher ? `출판사: ${book.publisher}` : "",
+    book.callNo ? `청구기호: ${book.callNo}` : "",
+    book.isbn ? `ISBN: ${book.isbn}` : ""
+  ].filter(Boolean);
+  bookDetailBookInfoEl.textContent = infoLines.join("\n");
+  bookDetailDescriptionEl.textContent = book.description || book.toc || "책소개가 없습니다.";
+
+  bookDetailModalEl.classList.add("open");
+  bookDetailModalEl.setAttribute("aria-hidden", "false");
+}
+
+function getKoreanObjectParticle(word) {
+  const trimmed = (word || "").trim();
+  const lastChar = trimmed.slice(-1);
+  const code = lastChar.charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) {
+    return "를";
+  }
+  return (code - 0xac00) % 28 === 0 ? "를" : "을";
+}
+
+function buildAssignmentObjectiveFromBook(book) {
+  const title = (book.title || "").trim() || "이 책";
+  const particle = getKoreanObjectParticle(title);
+  return `『${title}』${particle} 읽고 인상 깊었던 장면과 그 이유를 정리해 보세요. 등장인물의 생각과 감정을 자신의 경험과 연결 지어 표현해 봅시다.`;
+}
+
+function applyBookToAssignmentForm(book) {
+  assignmentBookTitleInputEl.value = book.title || "";
+  assignmentBookAuthorInputEl.value = extractAuthorFromBookInfo(book.bookInfo) || "";
+  assignmentSummaryInputEl.value = (book.description || "").trim();
+  assignmentObjectiveInputEl.value = buildAssignmentObjectiveFromBook(book);
+  closeAssignmentBookPickerModal();
+}
+
+function populateAssignmentBookPickerCategoryFilter(books) {
+  const previousValue = assignmentBookPickerCategoryFilterEl.value;
+  const categories = Array.from(new Set(books.map((book) => book.subjectCategory).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, "ko")
+  );
+
+  assignmentBookPickerCategoryFilterEl.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "전체";
+  assignmentBookPickerCategoryFilterEl.appendChild(allOption);
+
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    assignmentBookPickerCategoryFilterEl.appendChild(option);
+  });
+
+  if (categories.includes(previousValue)) {
+    assignmentBookPickerCategoryFilterEl.value = previousValue;
+  }
+}
+
+function getFilteredAssignmentBookPickerRows() {
+  const keyword = assignmentBookPickerKeywordInputEl.value.trim().toLowerCase();
+  const ageGroup = assignmentBookPickerAgeGroupFilterEl.value;
+  const category = assignmentBookPickerCategoryFilterEl.value;
+
+  return nlcyBooksCache.filter((book) => {
+    if (ageGroup && book.ageGroup !== ageGroup) {
+      return false;
+    }
+    if (category && book.subjectCategory !== category) {
+      return false;
+    }
+    if (keyword) {
+      const haystack = `${book.title || ""} ${extractAuthorFromBookInfo(book.bookInfo)} ${book.description || ""}`.toLowerCase();
+      if (!haystack.includes(keyword)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function renderAssignmentBookPickerGrid(books) {
+  assignmentBookPickerGridEl.innerHTML = "";
+  assignmentBookPickerEmptyEl.textContent = "조건에 맞는 추천도서가 없어요.";
+  assignmentBookPickerCountEl.textContent = `전체 ${nlcyBooksCache.length}건 중 ${books.length}건 표시`;
+  assignmentBookPickerEmptyEl.hidden = books.length > 0;
+
+  books.forEach((book) => {
+    const card = document.createElement("div");
+    card.className = "book-search-card book-picker-card";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", `${book.title || "도서"} 선택`);
+
+    const img = document.createElement("img");
+    img.className = "book-search-cover";
+    img.src = book.imageUrl || "";
+    img.alt = book.title || "";
+    img.loading = "lazy";
+
+    const title = document.createElement("p");
+    title.className = "book-search-title";
+    title.textContent = book.title || "제목 미상";
+
+    const author = document.createElement("p");
+    author.className = "book-search-author";
+    author.textContent = extractAuthorFromBookInfo(book.bookInfo) || "저자 미기재";
+
+    const meta = document.createElement("p");
+    meta.className = "book-search-meta";
+    meta.textContent = `${book.ageGroup || ""} · ${book.subjectCategory || "주제 미분류"}`;
+
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "small-btn book-picker-select-button";
+    selectButton.textContent = "이 책으로 채우기";
+
+    const selectBook = () => applyBookToAssignmentForm(book);
+    card.addEventListener("click", selectBook);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectBook();
+      }
+    });
+    selectButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectBook();
+    });
+
+    card.append(img, title, author, meta, selectButton);
+    assignmentBookPickerGridEl.appendChild(card);
+  });
+}
+
+function applyAssignmentBookPickerFilters() {
+  renderAssignmentBookPickerGrid(getFilteredAssignmentBookPickerRows());
+}
+
+async function openAssignmentBookPickerModal() {
+  assignmentBookPickerModalEl.classList.add("open");
+  assignmentBookPickerModalEl.setAttribute("aria-hidden", "false");
+
+  try {
+    if (nlcyBooksCache.length === 0) {
+      const data = await fetchJSON("/api/nlcy-books");
+      nlcyBooksCache = data.books || [];
+    }
+    populateAssignmentBookPickerCategoryFilter(nlcyBooksCache);
+    applyAssignmentBookPickerFilters();
+  } catch (error) {
+    assignmentBookPickerGridEl.innerHTML = "";
+    assignmentBookPickerEmptyEl.textContent = `추천도서를 불러오지 못했습니다: ${error.message}`;
+    assignmentBookPickerEmptyEl.hidden = false;
+  }
+}
+
+function closeAssignmentBookPickerModal() {
+  assignmentBookPickerModalEl.classList.remove("open");
+  assignmentBookPickerModalEl.setAttribute("aria-hidden", "true");
 }
 
 function renderStudentAssignmentDetail(assignment) {
@@ -2267,11 +2626,44 @@ bookSearchResetButton.addEventListener("click", () => {
   bookSearchCategoryFilterEl.value = "";
   applyBookSearchFilters();
 });
+bookSourceTabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => setActiveBookSearchSource(btn.dataset.bookSourceTab));
+});
+nlOpenApiKeywordInputEl.addEventListener("input", () => {
+  const filtered = getFilteredNlOpenApiRows();
+  renderNlOpenApiCount(filtered.length);
+  renderNlOpenApiGrid(filtered);
+});
+nlOpenApiSearchButton.addEventListener("click", () => loadNlOpenApiBooks(1));
+nlOpenApiResetButton.addEventListener("click", () => {
+  nlOpenApiKeywordInputEl.value = "";
+  nlOpenApiCategoryFilterEl.value = "";
+  nlOpenApiStartDateInputEl.value = "";
+  nlOpenApiEndDateInputEl.value = "";
+  loadNlOpenApiBooks(1);
+});
 bookDetailCloseButton.addEventListener("click", closeBookDetailModal);
 bookDetailModalEl.addEventListener("click", (event) => {
   if (event.target === bookDetailModalEl) {
     closeBookDetailModal();
   }
+});
+assignmentBookTitleSearchButton.addEventListener("click", () => openAssignmentBookPickerModal());
+assignmentBookAuthorSearchButton.addEventListener("click", () => openAssignmentBookPickerModal());
+assignmentBookPickerCloseButton.addEventListener("click", closeAssignmentBookPickerModal);
+assignmentBookPickerModalEl.addEventListener("click", (event) => {
+  if (event.target === assignmentBookPickerModalEl) {
+    closeAssignmentBookPickerModal();
+  }
+});
+assignmentBookPickerKeywordInputEl.addEventListener("input", applyAssignmentBookPickerFilters);
+assignmentBookPickerAgeGroupFilterEl.addEventListener("change", applyAssignmentBookPickerFilters);
+assignmentBookPickerCategoryFilterEl.addEventListener("change", applyAssignmentBookPickerFilters);
+assignmentBookPickerResetButton.addEventListener("click", () => {
+  assignmentBookPickerKeywordInputEl.value = "";
+  assignmentBookPickerAgeGroupFilterEl.value = "";
+  assignmentBookPickerCategoryFilterEl.value = "";
+  applyAssignmentBookPickerFilters();
 });
 teacherDetailDragBarEl.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) {
@@ -2321,6 +2713,7 @@ document.addEventListener("keydown", (event) => {
     closeStudentDetailModal();
     closeTeacherDetailModal();
     closeBookDetailModal();
+    closeAssignmentBookPickerModal();
   }
 });
 

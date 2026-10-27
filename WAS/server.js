@@ -26,6 +26,11 @@ const {
 } = require("../DB/database");
 const { INDICATORS } = require("./services/evaluator");
 const { evaluateWithLLM, diagnoseWithLLM, chatDiscussionReply, checkLlmHealth } = require("./services/llm/llmLiteracyService");
+const {
+  isConfigured: isNlOpenApiConfigured,
+  fetchRecommendedBooks: fetchNlOpenApiBooks,
+  DR_CODE_LABELS: NL_OPEN_API_DR_CODE_LABELS
+} = require("./services/nlOpenApiClient");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -229,6 +234,44 @@ app.get("/api/indicators", (req, res) => {
 
 app.get("/api/nlcy-books", (req, res) => {
   res.json({ books: getNlcyRecommendedBooks() });
+});
+
+app.get("/api/nl-open-books", async (req, res) => {
+  if (!isNlOpenApiConfigured()) {
+    return res.status(503).json({
+      configured: false,
+      message: "국립중앙도서관 Open API 인증키가 설정되지 않았습니다. 관리자에게 .env의 NL_OPEN_API_KEY 설정을 요청해 주세요."
+    });
+  }
+
+  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 12, 1), 50);
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const startRowNumApi = (page - 1) * pageSize + 1;
+  const endRowNumApi = startRowNumApi + pageSize - 1;
+
+  const drCode = Object.prototype.hasOwnProperty.call(NL_OPEN_API_DR_CODE_LABELS, req.query.drCode)
+    ? req.query.drCode
+    : undefined;
+
+  const dateDigitsOnly = /^\d{8}$/;
+  const normalizeDate = (value) => (typeof value === "string" ? value.replace(/-/g, "") : "");
+  const startDateDigits = normalizeDate(req.query.startDate);
+  const endDateDigits = normalizeDate(req.query.endDate);
+  const startDate = dateDigitsOnly.test(startDateDigits) ? startDateDigits : undefined;
+  const endDate = dateDigitsOnly.test(endDateDigits) ? endDateDigits : undefined;
+
+  try {
+    const result = await fetchNlOpenApiBooks({ startRowNumApi, endRowNumApi, startDate, endDate, drCode });
+    res.json({
+      configured: true,
+      page,
+      pageSize,
+      totalCount: result.totalCount,
+      books: result.items
+    });
+  } catch (err) {
+    res.status(502).json({ configured: true, message: err.message || "국립중앙도서관 API 호출 중 오류가 발생했습니다." });
+  }
 });
 
 app.post("/api/auth/login", (req, res) => {

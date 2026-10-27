@@ -305,6 +305,22 @@ h2 {
   gap: 16px;
 }
 
+.input-with-action {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.input-with-action input {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-action-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -1087,6 +1103,10 @@ body.role-teacher .teacher-only {
   margin-top: 18px;
 }
 
+.book-search-filters.nl-open-api-filters {
+  grid-template-columns: 2fr 1fr 1fr 1fr auto auto;
+}
+
 .book-search-filters .small-btn {
   height: 44px;
 }
@@ -1255,6 +1275,38 @@ body.role-teacher .teacher-only {
   color: var(--ink-soft);
   line-height: 1.7;
   white-space: pre-line;
+}
+
+.assignment-book-picker-card {
+  width: min(960px, 96vw);
+}
+
+.book-picker-hint {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.book-picker-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.book-picker-card:hover,
+.book-picker-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(108, 92, 231, 0.22);
+  border-color: rgba(108, 92, 231, 0.45);
+  outline: none;
+}
+
+.book-picker-select-button {
+  margin-top: auto;
+  width: 100%;
 }
 
 .discussion-layout {

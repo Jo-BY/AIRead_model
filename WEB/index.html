@@ -261,19 +261,25 @@
           <div class="grid-2">
             <label>
               책 제목
-              <input name="bookTitle" required placeholder="예: 데미안" />
+              <div class="input-with-action">
+                <input name="bookTitle" id="assignmentBookTitleInput" required placeholder="예: 데미안" />
+                <button type="button" class="small-btn input-action-btn" id="assignmentBookTitleSearchButton" title="추천도서에서 검색">🔍 검색</button>
+              </div>
             </label>
             <label>
               저자
-              <input name="bookAuthor" placeholder="예: 헤르만 헤세" />
+              <div class="input-with-action">
+                <input name="bookAuthor" id="assignmentBookAuthorInput" placeholder="예: 헤르만 헤세" />
+                <button type="button" class="small-btn input-action-btn" id="assignmentBookAuthorSearchButton" title="추천도서에서 검색">🔍 검색</button>
+              </div>
             </label>
             <label class="wide">
               책의 요약본
-              <textarea name="summary" rows="5" required placeholder="책의 내용을 핵심만 정리해 적어주세요."></textarea>
+              <textarea name="summary" id="assignmentSummaryInput" rows="5" required placeholder="책의 내용을 핵심만 정리해 적어주세요."></textarea>
             </label>
             <label class="wide">
               과제 목표
-              <textarea name="objective" rows="4" required placeholder="학생이 이 과제를 통해 달성해야 할 목표를 적어주세요."></textarea>
+              <textarea name="objective" id="assignmentObjectiveInput" rows="4" required placeholder="학생이 이 과제를 통해 달성해야 할 목표를 적어주세요."></textarea>
             </label>
             <label class="wide">
               제출 기한
@@ -294,31 +300,73 @@
           <h2>추천도서 검색</h2>
         </div>
 
-        <div class="book-search-filters">
-          <label class="wide">
-            검색어
-            <input id="bookSearchKeywordInput" type="text" placeholder="책 제목, 저자, 책소개로 검색" />
-          </label>
-          <label>
-            학년군
-            <select id="bookSearchAgeGroupFilter">
-              <option value="">전체</option>
-              <option value="초등저학년">초등저학년</option>
-              <option value="초등고학년">초등고학년</option>
-            </select>
-          </label>
-          <label>
-            주제구분
-            <select id="bookSearchCategoryFilter">
-              <option value="">전체</option>
-            </select>
-          </label>
-          <button id="bookSearchResetButton" class="small-btn" type="button">초기화</button>
+        <div class="history-tab-chip-row">
+          <button type="button" class="history-tab-chip active" data-book-source-tab="nlcy">국립어린이청소년도서관</button>
+          <button type="button" class="history-tab-chip" data-book-source-tab="nlopenapi">국립중앙도서관 Open API</button>
         </div>
 
-        <p id="bookSearchCount" class="book-search-count"></p>
-        <p id="bookSearchEmpty" class="book-search-empty" hidden>조건에 맞는 추천도서가 없어요.</p>
-        <div id="bookSearchGrid" class="book-search-grid"></div>
+        <div data-book-source-content="nlcy">
+          <div class="book-search-filters">
+            <label class="wide">
+              검색어
+              <input id="bookSearchKeywordInput" type="text" placeholder="책 제목, 저자, 책소개로 검색" />
+            </label>
+            <label>
+              학년군
+              <select id="bookSearchAgeGroupFilter">
+                <option value="">전체</option>
+                <option value="초등저학년">초등저학년</option>
+                <option value="초등고학년">초등고학년</option>
+              </select>
+            </label>
+            <label>
+              주제구분
+              <select id="bookSearchCategoryFilter">
+                <option value="">전체</option>
+              </select>
+            </label>
+            <button id="bookSearchResetButton" class="small-btn" type="button">초기화</button>
+          </div>
+
+          <p id="bookSearchCount" class="book-search-count"></p>
+          <p id="bookSearchEmpty" class="book-search-empty" hidden>조건에 맞는 추천도서가 없어요.</p>
+          <div id="bookSearchGrid" class="book-search-grid"></div>
+        </div>
+
+        <div data-book-source-content="nlopenapi" hidden>
+          <p class="book-picker-hint">국립중앙도서관 사서추천도서 Open API에서 실시간으로 불러온 목록입니다. 기간/분류로 서버에 조회하고, 불러온 목록 안에서 검색어로 다시 좁힐 수 있어요.</p>
+          <div class="book-search-filters nl-open-api-filters">
+            <label class="wide">
+              검색어 (불러온 목록 내 검색)
+              <input id="nlOpenApiKeywordInput" type="text" placeholder="책 제목, 저자로 검색" />
+            </label>
+            <label>
+              분류
+              <select id="nlOpenApiCategoryFilter">
+                <option value="">전체</option>
+                <option value="11">문학</option>
+                <option value="6">인문과학</option>
+                <option value="5">사회과학</option>
+                <option value="4">자연과학</option>
+              </select>
+            </label>
+            <label>
+              추천 시작일
+              <input id="nlOpenApiStartDateInput" type="date" />
+            </label>
+            <label>
+              추천 종료일
+              <input id="nlOpenApiEndDateInput" type="date" />
+            </label>
+            <button id="nlOpenApiSearchButton" class="small-btn" type="button">검색</button>
+            <button id="nlOpenApiResetButton" class="small-btn" type="button">초기화</button>
+          </div>
+
+          <p id="nlOpenApiStatus" class="book-search-empty" hidden></p>
+          <p id="nlOpenApiCount" class="book-search-count"></p>
+          <div id="nlOpenApiGrid" class="book-search-grid"></div>
+          <div id="nlOpenApiPagination" class="teacher-trend-pagination"></div>
+        </div>
       </section>
 
       <section class="panel view-panel" id="view-teacher-dashboard">
@@ -593,6 +641,44 @@
             <h4>책소개</h4>
             <p id="bookDetailDescription"></p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="book-modal-overlay" id="assignmentBookPickerModal" aria-hidden="true">
+      <div class="book-modal-card assignment-book-picker-card" role="dialog" aria-modal="true" aria-labelledby="assignmentBookPickerTitle">
+        <div class="book-modal-titlebar">
+          <div class="teacher-window-title" id="assignmentBookPickerTitle">📚 추천도서에서 선택</div>
+          <div class="teacher-window-actions">
+            <button id="assignmentBookPickerCloseButton" class="small-btn" type="button">닫기</button>
+          </div>
+        </div>
+        <div class="book-modal-content">
+          <p class="book-picker-hint">책을 선택하면 책 제목·저자·책의 요약본·과제 목표가 자동으로 채워집니다.</p>
+          <div class="book-search-filters">
+            <label class="wide">
+              검색어
+              <input id="assignmentBookPickerKeywordInput" type="text" placeholder="책 제목, 저자, 책소개로 검색" />
+            </label>
+            <label>
+              학년군
+              <select id="assignmentBookPickerAgeGroupFilter">
+                <option value="">전체</option>
+                <option value="초등저학년">초등저학년</option>
+                <option value="초등고학년">초등고학년</option>
+              </select>
+            </label>
+            <label>
+              주제구분
+              <select id="assignmentBookPickerCategoryFilter">
+                <option value="">전체</option>
+              </select>
+            </label>
+            <button id="assignmentBookPickerResetButton" class="small-btn" type="button">초기화</button>
+          </div>
+          <p id="assignmentBookPickerCount" class="book-search-count"></p>
+          <p id="assignmentBookPickerEmpty" class="book-search-empty" hidden>조건에 맞는 추천도서가 없어요.</p>
+          <div id="assignmentBookPickerGrid" class="book-search-grid"></div>
         </div>
       </div>
     </div>
