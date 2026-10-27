@@ -16,3 +16,9 @@ services:
         value: "0000"
       - key: LLM_ENABLED
         value: "false"
+      - key: NL_OPEN_API_KEY
+        sync: false
+      - key: NL_OPEN_API_BASE_URL
+        value: https://www.nl.go.kr/NL/search/openApi/saseoApi.do
+      - key: NL_OPEN_API_TIMEOUT_MS
+        value: "10000"
